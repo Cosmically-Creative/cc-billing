@@ -63,6 +63,7 @@ CAPABILITIES = {
     "quote_outcome": {B},
     "record_manual_payment": {B},
     "resolve_refund": {B},
+    "resend_receipt": {B},
     "record_online_payment": {S},
     "void": {B},
     "credit_note": {B},

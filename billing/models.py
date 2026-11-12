@@ -369,3 +369,52 @@ class AuditEvent(models.Model):
     class Meta:
         ordering = ["id"]
         indexes = [models.Index(fields=["entity", "entity_id"])]
+
+
+class PaidCopy(models.Model):
+    """The PAID-stamped copy of an invoice, made once when its balance reaches $0 and then stored.
+    The original PDF from approval never changes. If a refund reopens the balance, this copy is
+    marked superseded (never deleted) and the next paid-in-full moment makes a new one."""
+
+    invoice = models.ForeignKey(Document, on_delete=models.PROTECT, related_name="paid_copies")
+    paid_in_full_on = models.DateField()
+    # Frozen list of every payment and credit applied, for the stamp.
+    applied = models.JSONField()
+    pdf_file = models.CharField(max_length=300, blank=True)  # set once, when rendered
+    pdf_sha256 = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    superseded_at = models.DateTimeField(null=True, blank=True)
+    superseded_reason = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["invoice"], condition=Q(superseded_at__isnull=True), name="one_current_paid_copy"),
+        ]
+
+
+class Receipt(models.Model):
+    """Exactly one receipt per payment. Created in the payment's transaction; emailed afterwards,
+    so a mail failure never undoes a payment."""
+
+    class Kind(models.TextChoices):
+        PARTIAL = "partial", "Partial payment"
+        PAID_IN_FULL = "paid_in_full", "Paid in full"
+
+    class EmailStatus(models.TextChoices):
+        PENDING = "pending", "Waiting to send"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
+        NOT_SENT = "not_sent", "Not sent (Blake unticked it)"
+
+    payment = models.OneToOneField(Payment, on_delete=models.PROTECT, related_name="receipt")
+    kind = models.CharField(max_length=14, choices=Kind.choices)
+    paid_copy = models.ForeignKey(PaidCopy, null=True, blank=True, on_delete=models.PROTECT, related_name="receipts")
+    paid_so_far_cents = models.BigIntegerField()
+    balance_after_cents = models.BigIntegerField()
+    credit_cents = models.BigIntegerField(default=0)  # overpayment that became customer credit
+    email_status = models.CharField(max_length=10, choices=EmailStatus.choices)
+    recipients = models.JSONField(default=list)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_error = models.CharField(max_length=300, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)

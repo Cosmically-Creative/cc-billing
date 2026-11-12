@@ -47,5 +47,6 @@ Then open http://127.0.0.1:3040/account/login/. The first sign-in shows a QR cod
 
 ## Status
 
-Built so far: data model, billing rules, database guards, change history, sign-in, Ledger token model.
+Built so far: data model, billing rules, database guards, change history, sign-in, Ledger token model,
+receipts (one per payment; the paid-in-full receipt attaches a stored PAID-stamped copy).
 Next: screens from Prism's Penpot design, PDFs, email sending, the Ledger API + MCP layer, Stripe.

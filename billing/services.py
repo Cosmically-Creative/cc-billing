@@ -23,7 +23,9 @@ from .models import (
     Document,
     LineItem,
     NumberCounter,
+    PaidCopy,
     Payment,
+    Receipt,
     RecurringRun,
     RecurringTemplate,
     Refund,
@@ -35,6 +37,7 @@ from .permissions import ActorRef, LockedError, PermissionDenied, RuleError, all
 D = Document
 S = Document.Status
 OPEN_INVOICE = (S.APPROVED, S.SENT, S.PARTLY_PAID, S.PAID)
+STRIPE_MIN_CENTS = 50
 
 CUSTOMER_CONTACT_FIELDS = {"name", "email", "phone", "address", "notes"}
 CUSTOMER_TAX_FIELDS = {"tax_exempt", "exemption_note"}
@@ -551,8 +554,11 @@ def _refresh_invoice_status(inv, actor=None, note=""):
     else:
         new = S.SENT if inv.sent_at else S.APPROVED
     if new != inv.status:
+        old = inv.status
         Document.objects.filter(pk=inv.pk).update(status=new)
         inv.status = new
+        if old == S.PAID:
+            _supersede_paid_copy(inv, actor, note or "balance reopened")
 
 
 def badges(inv, on_date=None):
@@ -569,13 +575,45 @@ def badges(inv, on_date=None):
 
 
 def can_pay_online(inv):
-    return inv.kind == D.Kind.INVOICE and inv.status in (S.SENT, S.PARTLY_PAID) and balance_cents(inv) > 0 and not inv.donated
+    # Stripe can't charge under $0.50: below that the pay link is off and the page says "Contact us".
+    return inv.kind == D.Kind.INVOICE and inv.status in (S.SENT, S.PARTLY_PAID) and balance_cents(inv) >= STRIPE_MIN_CENTS and not inv.donated
 
 
 # --- payments -----------------------------------------------------------------
 
 
-def _apply_payment(inv, actor, method, amount_cents, received_on, **extra):
+def _paid_copy_items(inv):
+    items = [
+        {"type": "payment", "date": p.received_on, "method": p.method, "check_number": p.check_number, "amount_cents": p.applied_cents}
+        for p in inv.payments.order_by("received_on", "pk")
+        if p.applied_cents
+    ]
+    items += [
+        {"type": "credit_note", "date": cn.issue_date, "number": cn.number, "amount_cents": cn.total_cents}
+        for cn in Document.objects.filter(credit_for=inv, kind=D.Kind.CREDIT_NOTE).exclude(status__in=[S.DRAFT, S.VOID]).order_by("pk")
+    ]
+    refunds = Refund.objects.filter(payment__invoice=inv).exclude(resolution=Refund.Resolution.PENDING)
+    items += [{"type": "refund", "date": timezone.localdate(r.created_at), "amount_cents": -r.amount_cents} for r in refunds.order_by("pk")]
+    return items
+
+
+def _current_paid_copy(inv, paid_on):
+    """The stored PAID copy for this paid-in-full moment; made once."""
+    copy = PaidCopy.objects.filter(invoice=inv, superseded_at__isnull=True).first()
+    if copy is None:
+        copy = PaidCopy.objects.create(invoice=inv, paid_in_full_on=paid_on, applied=audit._jsonable(_paid_copy_items(inv)))
+        audit.record(ActorRef(Actor.SYSTEM), "paid_copy_created", "document", inv.pk, after={"paid_copy_id": copy.pk, "paid_in_full_on": paid_on})
+    return copy
+
+
+def _supersede_paid_copy(inv, actor, reason):
+    copy = PaidCopy.objects.filter(invoice=inv, superseded_at__isnull=True).first()
+    if copy is not None:
+        PaidCopy.objects.filter(pk=copy.pk).update(superseded_at=timezone.now(), superseded_reason=reason[:300])
+        audit.record(actor or ActorRef(Actor.SYSTEM), "paid_copy_superseded", "document", inv.pk, after={"paid_copy_id": copy.pk}, note=reason)
+
+
+def _apply_payment(inv, actor, method, amount_cents, received_on, email_receipt=True, **extra):
     bal = max(balance_cents(inv), 0)
     applied = min(amount_cents, bal)
     p = Payment.objects.create(
@@ -604,10 +642,125 @@ def _apply_payment(inv, actor, method, amount_cents, received_on, **extra):
             "payment": {"id": p.pk, "method": method, "amount_cents": amount_cents, "applied_cents": applied, "credit_cents": excess},
         },
     )
+    _create_receipt(inv, p, actor, excess, email_receipt)
     return p
 
 
-def record_manual_payment(actor: ActorRef, invoice, method, amount_cents, received_on, check_number="", note=""):
+def _create_receipt(inv, payment, actor, credit_cents, email_receipt):
+    """One receipt per payment, in the payment's transaction. Emailing happens later (deliver_receipt)."""
+    paid_in_full = inv.status == S.PAID
+    copy = _current_paid_copy(inv, payment.received_on) if paid_in_full else None
+    r = Receipt.objects.create(
+        payment=payment,
+        kind=Receipt.Kind.PAID_IN_FULL if paid_in_full else Receipt.Kind.PARTIAL,
+        paid_copy=copy,
+        paid_so_far_cents=_applied_total(inv),
+        balance_after_cents=max(balance_cents(inv), 0),
+        credit_cents=credit_cents,
+        email_status=Receipt.EmailStatus.PENDING if email_receipt else Receipt.EmailStatus.NOT_SENT,
+        recipients=[inv.customer.email] if inv.customer.email else [],
+    )
+    if not email_receipt:
+        audit.record(actor, "receipt_not_sent", "document", inv.pk, after={"receipt_id": r.pk, "payment_id": payment.pk}, note="receipt not sent")
+    return r
+
+
+def receipt_summary(receipt):
+    """What the receipt email says (spec v0.6 §6)."""
+    p = receipt.payment
+    inv = p.invoice
+    method = {
+        Payment.Method.STRIPE: "Card/bank (online)",
+        Payment.Method.CHECK: f"Check #{p.check_number}" if p.check_number else "Check",
+        Payment.Method.CASH: "Cash",
+    }.get(p.method, "Other")
+    return {
+        "from": BusinessSettings.load().email,
+        "to": list(receipt.recipients),
+        "invoice_number": inv.number,
+        "payment_date": p.received_on,
+        "amount": money.format_usd(p.amount_cents),
+        "method": method,
+        "paid_so_far": money.format_usd(receipt.paid_so_far_cents),
+        "balance": "Paid in full" if receipt.kind == Receipt.Kind.PAID_IN_FULL else money.format_usd(receipt.balance_after_cents),
+        "credit": money.format_usd(receipt.credit_cents) if receipt.credit_cents else "",
+        "attach_paid_copy": receipt.kind == Receipt.Kind.PAID_IN_FULL,
+    }
+
+
+def deliver_receipt(receipt, render_paid_copy, send_email, now=None):
+    """Email one receipt, exactly once. `render_paid_copy(copy) -> (path, sha256)` makes the stored
+    PAID copy the first time; `send_email(receipt, summary, paid_copy)` raises on failure.
+    A failure is recorded for Blake and never touches the payment."""
+    with transaction.atomic():
+        r = Receipt.objects.select_for_update().get(pk=receipt.pk)
+        if r.email_status != Receipt.EmailStatus.PENDING:
+            return r
+        r.attempts += 1
+        copy = None
+        try:
+            if not r.recipients:
+                raise RuntimeError("the client has no email address")
+            if r.paid_copy_id:
+                copy = PaidCopy.objects.select_for_update().get(pk=r.paid_copy_id)
+                if not copy.pdf_file:
+                    copy.pdf_file, copy.pdf_sha256 = render_paid_copy(copy)
+                    copy.save(update_fields=["pdf_file", "pdf_sha256"])
+            send_email(r, receipt_summary(r), copy)
+        except Exception as e:
+            r.email_status, r.last_error = Receipt.EmailStatus.FAILED, str(e)[:300]
+            r.save(update_fields=["email_status", "last_error", "attempts"])
+            audit.record(ActorRef(Actor.SYSTEM), "receipt_failed", "document", r.payment.invoice_id, after={"receipt_id": r.pk}, note=r.last_error)
+            return r
+        r.email_status, r.sent_at, r.last_error = Receipt.EmailStatus.SENT, now or timezone.now(), ""
+        r.save(update_fields=["email_status", "sent_at", "last_error", "attempts"])
+        audit.record(
+            ActorRef(Actor.SYSTEM),
+            "receipt_sent",
+            "document",
+            r.payment.invoice_id,
+            after={"receipt_id": r.pk, "payment_id": r.payment_id, "to": r.recipients, "paid_copy_id": r.paid_copy_id},
+        )
+        return r
+
+
+def resend_receipt(actor: ActorRef, receipt, render_paid_copy, send_email):
+    """Blake only. Sends the same receipt again, with the same stored PAID copy."""
+    require(actor, "resend_receipt", "receipt", receipt.pk)
+    with transaction.atomic():
+        r = Receipt.objects.select_for_update().get(pk=receipt.pk)
+        if r.email_status == Receipt.EmailStatus.PENDING:
+            raise RuleError("this receipt is already waiting to be sent")
+        Receipt.objects.filter(pk=r.pk).update(email_status=Receipt.EmailStatus.PENDING)
+        audit.record(actor, "receipt_resend", "document", r.payment.invoice_id, after={"receipt_id": r.pk})
+    return deliver_receipt(r, render_paid_copy, send_email)
+
+
+# --- settings -----------------------------------------------------------------
+
+SETTINGS_FIELDS = {"name", "address_line1", "city_state_zip", "phone", "email", "net_days", "min_online_payment_cents", "late_fee_default_bp", "send_warning_days"}
+
+
+def update_settings(actor: ActorRef, **fields):
+    require(actor, "edit_settings", "settings", 1)
+    unknown = set(fields) - SETTINGS_FIELDS
+    if unknown:
+        raise RuleError(f"unknown settings: {sorted(unknown)}")
+    if "min_online_payment_cents" in fields:
+        money._require_int("min_online_payment_cents", fields["min_online_payment_cents"])
+        if fields["min_online_payment_cents"] < 50:
+            raise RuleError("Stripe can't charge less than $0.50")
+    with transaction.atomic():
+        st = BusinessSettings.objects.select_for_update().get_or_create(pk=1)[0]
+        before = {f: getattr(st, f) for f in SETTINGS_FIELDS}
+        for k, v in fields.items():
+            setattr(st, k, v)
+        st.save()
+        audit.record(actor, "update_settings", "settings", 1, before=before, after={f: getattr(st, f) for f in SETTINGS_FIELDS})
+    return st
+
+
+def record_manual_payment(actor: ActorRef, invoice, method, amount_cents, received_on, check_number="", note="", email_receipt=True):
     require(actor, "record_manual_payment", "document", invoice.pk)
     if method not in (Payment.Method.CHECK, Payment.Method.CASH, Payment.Method.OTHER):
         raise RuleError("manual payments are check, cash or other; online payments come only from Stripe")
@@ -618,7 +771,7 @@ def record_manual_payment(actor: ActorRef, invoice, method, amount_cents, receiv
         inv = Document.objects.select_for_update().get(pk=invoice.pk)
         if inv.kind != D.Kind.INVOICE or inv.status not in OPEN_INVOICE:
             raise RuleError("payments can only be recorded on approved invoices")
-        return _apply_payment(inv, actor, method, amount_cents, received_on, check_number=check_number, note=note)
+        return _apply_payment(inv, actor, method, amount_cents, received_on, email_receipt=email_receipt, check_number=check_number, note=note)
 
 
 def check_online_amount(invoice, amount_cents):
@@ -737,7 +890,7 @@ def resolve_refund(actor: ActorRef, refund, resolution, now=None):
             Refund.objects.filter(pk=r.pk).update(credit_note=cn)
         else:
             r.save()
-            _refresh_invoice_status(inv)
+            _refresh_invoice_status(inv, actor=actor, note="refund: balance reopened")
         audit.record(actor, "refund_resolved", "document", inv.pk, after={"refund_id": r.pk, "resolution": resolution, "balance_cents": balance_cents(inv)})
     return r
 

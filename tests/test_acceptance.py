@@ -8,7 +8,7 @@ from django.db import DatabaseError, transaction
 
 from billing import audit, services as svc
 from billing.models import AuditEvent, CustomerCredit, Document, NumberCounter, Payment, RecurringTemplate, Refund
-from billing.permissions import LockedError, PermissionDenied, RuleError
+from billing.permissions import ActorRef, LockedError, PermissionDenied, RuleError
 
 from .conftest import central, line
 
@@ -84,12 +84,15 @@ def test_05_pay_page_limits(make_invoice, products):
         svc.check_online_amount(inv, 50.0)  # floats never accepted
 
 
-def test_05b_balance_below_minimum_must_be_paid_in_full(make_invoice, products):
+def test_05b_small_balances(make_invoice, products):
     inv = make_invoice([line(products["hosting"], 1000)])
-    stripe_pay(inv, 950)  # 50 cents left, below the $1 minimum
-    svc.check_online_amount(inv, 50)
+    stripe_pay(inv, 925)  # $0.75 left, below the $1 minimum: only the whole balance
+    svc.check_online_amount(inv, 75)
     with pytest.raises(RuleError):
-        svc.check_online_amount(inv, 49)
+        svc.check_online_amount(inv, 74)
+    svc.record_manual_payment(ActorRef.blake(), inv, "cash", 35, dt.date(2026, 12, 13))  # $0.40 left
+    inv.refresh_from_db()
+    assert svc.balance_cents(inv) == 40 and not svc.can_pay_online(inv)  # Stripe can't charge under $0.50
 
 
 # 6 ---------------------------------------------------------------------------
@@ -186,6 +189,7 @@ def test_11_ledger_is_refused_and_logged(blake, ledger, customer, make_invoice, 
         ("edit_billing_terms", lambda: svc.update_draft(ledger, draft, late_fee_enabled=True)),
         ("credit_note", lambda: svc.create_credit_note_draft(ledger, inv, [line(cents=100, taxable=False)])),
         ("manage_tokens", lambda: svc.create_token(ledger)),
+        ("edit_settings", lambda: svc.update_settings(ledger, min_online_payment_cents=500)),
     ]
     for capability, attempt in attempts:
         with pytest.raises(PermissionDenied):
@@ -270,6 +274,9 @@ def test_15_donated_invoice(blake, customer, products):
     svc.mark_sent(blake, d, "manual", now=central(2026, 12, 10))
     d.refresh_from_db()
     assert d.status == S.PAID and not svc.can_pay_online(d)
+    from billing.models import Receipt
+
+    assert not Receipt.objects.filter(payment__invoice=d).exists()  # no payment, no receipt
 
 
 # 16 --------------------------------------------------------------------------
@@ -334,6 +341,7 @@ def test_20_every_step_is_in_the_history(blake, ledger, customer, products):
         ("blake", "sent_manually"),
         ("stripe", "payment"),
         ("blake", "payment"),
+        ("system", "paid_copy_created"),
     ]
     edit = audit.history("document", d.pk).get(action="update_draft")
     assert edit.before["notes"] == "" and edit.after["notes"] == "Thanks! (sample)"
@@ -341,3 +349,11 @@ def test_20_every_step_is_in_the_history(blake, ledger, customer, products):
     assert approval.before["number"] == "" and approval.after["number"] == "CC-2026-0001"
     assert all(e.at is not None for e in audit.history("document", d.pk))
     assert audit.verify_chain()[0]
+
+
+def test_untaxed_defaults_hosting_domains_platform(db):
+    """Blake confirmed: hosting, domains and platform renewals (e.g. Webflow) are not taxable."""
+    from billing.models import Product
+
+    for kind in ("hosting", "domain", "platform", "late_fee"):
+        assert not Product.objects.filter(kind=kind, default_taxable=True).exists(), kind
