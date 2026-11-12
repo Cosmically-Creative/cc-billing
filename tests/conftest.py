@@ -26,9 +26,16 @@ def ledger():
     return ActorRef.ledger("ccb_testtok")
 
 
+def jurisdiction(name):
+    from billing.models import TaxJurisdiction
+
+    return TaxJurisdiction.objects.get(name=name)
+
+
 @pytest.fixture
 def customer(db, blake):
-    return svc.create_customer(blake, name="Sample Bakery (fake)", email="owner@example.com")
+    c = svc.create_customer(blake, name="Sample Bakery (fake)", email="owner@example.com", address="100 Sample St, Sioux Center, IA")
+    return svc.confirm_tax_location(blake, c, "IA", jurisdiction("Sioux Center"), checked_on=dt.date(2026, 11, 12), source="test")
 
 
 @pytest.fixture

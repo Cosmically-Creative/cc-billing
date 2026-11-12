@@ -35,7 +35,8 @@ def test_01_quote_accept_convert(blake, ledger, customer, products):
     q.refresh_from_db()
     assert q.status == S.CONVERTED
     assert inv.status == S.DRAFT and inv.from_quote_id == q.pk and inv.number == ""
-    t = svc.preview_totals(inv, dt.date(2026, 12, 4))
+    t, ctx = svc.preview_totals(inv, dt.date(2026, 12, 4))
+    assert not ctx.missing and ctx.label == "Sales tax (7%, Iowa + Sioux Center)"
     assert (t.tax_cents, t.total_cents) == (5250, 87750)
     inv = svc.approve(blake, inv, now=central(2026, 12, 4))
     assert (inv.number, inv.tax_cents, inv.total_cents) == ("CC-2026-0001", 5250, 87750)

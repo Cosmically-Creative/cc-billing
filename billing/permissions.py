@@ -53,6 +53,8 @@ CAPABILITIES = {
     "edit_customer_contact": {B, L},
     "edit_customer_tax": {B},
     "edit_settings": {B},
+    "propose_tax_location": {B, L},
+    "confirm_tax_location": {B},
     "edit_draft": {B, L},
     "edit_billing_terms": {B},  # donated, late-fee switch/rate
     "override_taxable": {B},  # change a line's taxable flag away from the product default
@@ -82,6 +84,7 @@ TOKEN_SCOPE = {
     "edit_draft": "drafts:write",
     "convert_quote": "drafts:write",
     "draft_late_fee": "drafts:write",
+    "propose_tax_location": "drafts:write",
 }
 
 

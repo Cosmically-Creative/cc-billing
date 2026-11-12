@@ -10,7 +10,7 @@ Stack: Python 3.13 · Django 5.2 LTS · PostgreSQL 18 · (WeasyPrint for PDFs, c
 | Rule | Where |
 |---|---|
 | Money is integer cents, rates are basis points (700 = 7%), quantities are thousandths. Floats are rejected. | `billing/money.py` |
-| Tax per taxable line, after its discount, rounded half-up, then summed. Exempt customers and donated work pay none. | `money.compute_totals` |
+| Tax = Iowa 6% + the local option where the client is. Per taxed line: combined and state parts rounded half-up, local = the difference. Exempt customers and donated work pay none; out-of-state clients pay no Iowa tax (flagged). A taxed invoice needs a confirmed tax location; only Blake confirms. | `money.compute_totals`, `services.tax_context` |
 | Numbers (`Q-`, `CC-`, `CN-` + Central-time year + 4 digits) are assigned only at approval, from a locked counter in the same transaction. Failures roll the number back: no gaps. | `services.approve`, `_next_number` |
 | Approved documents are locked. Corrections go through void + replacement or a credit note. | `services.py` + database triggers |
 | Only drafts can be deleted; void is final; nothing returns to draft. | migration `0002_database_guards` |
@@ -48,5 +48,6 @@ Then open http://127.0.0.1:3040/account/login/. The first sign-in shows a QR cod
 ## Status
 
 Built so far: data model, billing rules, database guards, change history, sign-in, Ledger token model,
-receipts (one per payment; the paid-in-full receipt attaches a stored PAID-stamped copy).
+receipts (one per payment; the paid-in-full receipt attaches a stored PAID-stamped copy),
+sales tax by client location (Iowa state + local option, stored separately per line) and the tax report.
 Next: screens from Prism's Penpot design, PDFs, email sending, the Ledger API + MCP layer, Stripe.

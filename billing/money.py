@@ -61,8 +61,12 @@ class LineResult:
     discount_cents: int
     net_cents: int
     taxable: bool
-    tax_rate_bp: int
-    tax_cents: int
+    tax_rate_bp: int  # combined
+    tax_cents: int  # combined = state + local
+    state_rate_bp: int = 0
+    state_tax_cents: int = 0
+    local_rate_bp: int = 0
+    local_tax_cents: int = 0
 
 
 @dataclass(frozen=True)
@@ -72,6 +76,8 @@ class Totals:
     discount_cents: int = 0
     taxable_cents: int = 0  # net amount of taxable lines
     tax_cents: int = 0
+    state_tax_cents: int = 0
+    local_tax_cents: int = 0
     value_cents: int = 0  # what the work is worth (subtotal - discount + tax)
     total_cents: int = 0  # what the client owes (0 for donated work)
 
@@ -81,22 +87,38 @@ def line_tax(net_cents: int, rate_bp: int) -> int:
     return div_round_half_up(net_cents * rate_bp, BP_DENOMINATOR)
 
 
-def compute_totals(lines, rate_bp: int, *, customer_exempt: bool = False, donated: bool = False) -> Totals:
-    _require_int("rate_bp", rate_bp)
-    if not 0 <= rate_bp <= BP_DENOMINATOR:
+def split_line_tax(net_cents: int, state_bp: int, local_bp: int) -> tuple[int, int, int]:
+    """(combined, state, local) for one line (spec v0.6 §4): combined and state are each rounded
+    half-up; local = combined − state, so the parts always add up to what was charged."""
+    combined = line_tax(net_cents, state_bp + local_bp)
+    state = line_tax(net_cents, state_bp)
+    return combined, state, combined - state
+
+
+def compute_totals(lines, state_bp: int, local_bp: int = 0, *, customer_exempt: bool = False, donated: bool = False) -> Totals:
+    _require_int("state_bp", state_bp)
+    _require_int("local_bp", local_bp)
+    if not (0 <= state_bp and 0 <= local_bp and state_bp + local_bp <= BP_DENOMINATOR):
         raise ValueError("tax rate out of range")
     results = []
     for line in lines:
-        taxed = line.taxable and not customer_exempt and not donated
-        applied_rate = rate_bp if taxed else 0
+        taxed = line.taxable and not customer_exempt and not donated and (state_bp + local_bp) > 0
+        if taxed:
+            combined, state, local = split_line_tax(line.net_cents, state_bp, local_bp)
+        else:
+            combined = state = local = 0
         results.append(
             LineResult(
                 gross_cents=line.gross_cents,
                 discount_cents=line.discount_cents,
                 net_cents=line.net_cents,
                 taxable=taxed,
-                tax_rate_bp=applied_rate,
-                tax_cents=line_tax(line.net_cents, applied_rate) if taxed else 0,
+                tax_rate_bp=(state_bp + local_bp) if taxed else 0,
+                tax_cents=combined,
+                state_rate_bp=state_bp if taxed else 0,
+                state_tax_cents=state,
+                local_rate_bp=local_bp if taxed else 0,
+                local_tax_cents=local,
             )
         )
     subtotal = sum(r.gross_cents for r in results)
@@ -110,6 +132,8 @@ def compute_totals(lines, rate_bp: int, *, customer_exempt: bool = False, donate
         discount_cents=discount,
         taxable_cents=taxable,
         tax_cents=tax,
+        state_tax_cents=sum(r.state_tax_cents for r in results),
+        local_tax_cents=sum(r.local_tax_cents for r in results),
         value_cents=value,
         total_cents=0 if donated else value,
     )
@@ -149,6 +173,13 @@ def validate_online_amount(amount_cents: int, balance_cents: int, minimum_cents:
     floor = min(minimum_cents, balance_cents)
     if amount_cents < floor:
         raise ValueError(f"the smallest payment is {format_usd(floor)}")
+
+
+def format_rate(bp: int) -> str:
+    """700 → '7%', 650 → '6.5%', 725 → '7.25%' (no floats)."""
+    _require_int("bp", bp)
+    whole, frac = divmod(bp, 100)
+    return f"{whole}%" if not frac else f"{whole}.{frac:02d}".rstrip("0") + "%"
 
 
 def format_usd(cents: int) -> str:

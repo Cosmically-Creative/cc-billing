@@ -29,8 +29,11 @@ from .models import (
     RecurringRun,
     RecurringTemplate,
     Refund,
+    LocalTaxRate,
+    StateTaxRate,
     StripeEvent,
-    TaxRate,
+    TaxJurisdiction,
+    TaxLocationProposal,
 )
 from .permissions import ActorRef, LockedError, PermissionDenied, RuleError, allowed, require
 
@@ -42,7 +45,8 @@ STRIPE_MIN_CENTS = 50
 CUSTOMER_CONTACT_FIELDS = {"name", "email", "phone", "address", "notes"}
 CUSTOMER_TAX_FIELDS = {"tax_exempt", "exemption_note"}
 DRAFT_FIELDS = {"notes", "email_subject", "email_body", "customer"}
-TERMS_FIELDS = {"donated", "late_fee_enabled", "late_fee_bp"}
+TERMS_FIELDS = {"donated", "late_fee_enabled", "late_fee_bp", "tax_override_state", "tax_override_jurisdiction"}  # Blake only
+HOME_STATE = "IA"
 
 
 # --- snapshots for the change history ----------------------------------------
@@ -127,10 +131,20 @@ def update_customer(actor: ActorRef, customer, **fields):
     with transaction.atomic():
         c = Customer.objects.select_for_update().get(pk=customer.pk)
         before = customer_state(c)
+        address_changed = "address" in fields and fields["address"] != c.address
         for k, v in fields.items():
             setattr(c, k, v)
+        if address_changed:
+            c.tax_location_pending = True  # the confirmed location keeps applying until Blake confirms
         c.save()
-        _log(actor, "update", c, before=before, after=customer_state(c))
+        _log(
+            actor,
+            "update",
+            c,
+            before=before,
+            after=customer_state(c),
+            note="address changed: tax location pending Blake" if address_changed else "",
+        )
     return c
 
 
@@ -242,15 +256,192 @@ def delete_draft(actor: ActorRef, doc):
     _deny(actor, "delete", doc, f"{doc} is not a draft and can't be deleted")
 
 
+# --- tax location -------------------------------------------------------------
+
+from dataclasses import dataclass  # noqa: E402
+
+
+@dataclass(frozen=True)
+class TaxContext:
+    state: str = ""
+    jurisdiction: object = None
+    state_bp: int = 0
+    local_bp: int = 0
+    out_of_state: bool = False
+    missing: bool = False  # no tax location, and a taxed line needs one
+
+    @property
+    def label(self):
+        if self.out_of_state:
+            return "No Iowa sales tax (out of state)"
+        if not self.state:
+            return ""
+        total = money.format_rate(self.state_bp + self.local_bp)
+        if self.local_bp and self.jurisdiction is not None:
+            return f"Sales tax ({total}, Iowa + {self.jurisdiction.name})"
+        return f"Sales tax ({total}, Iowa)"
+
+
+MISSING_LOCATION = "Add the client's address first: a taxed line needs the client's tax location."
+
+
+def tax_context(doc, customer, day, lines):
+    """Which rates apply (spec v0.6 §4): Iowa state rate + the local option where the client is.
+    Credit notes reuse their invoice's frozen rates, so tax is credited at the original rate."""
+    if doc.kind == D.Kind.CREDIT_NOTE and doc.credit_for_id:
+        inv = Document.objects.get(pk=doc.credit_for_id)
+        return TaxContext(inv.tax_state, inv.tax_jurisdiction, inv.state_rate_bp or 0, inv.local_rate_bp or 0, inv.out_of_state)
+    needs_tax = any(li.taxable for li in lines) and not customer.tax_exempt and not doc.donated
+    if doc.tax_override_state:
+        state, jurisdiction = doc.tax_override_state, doc.tax_override_jurisdiction
+    elif customer.tax_state:
+        state, jurisdiction = customer.tax_state, customer.tax_jurisdiction
+    else:
+        return TaxContext(missing=needs_tax)
+    if state != HOME_STATE:
+        return TaxContext(state=state, out_of_state=True)
+    if jurisdiction is None:
+        return TaxContext(missing=needs_tax)
+    try:
+        state_bp = StateTaxRate.for_date(HOME_STATE, day).rate_bp
+    except LookupError as e:
+        raise RuleError(str(e)) from e
+    return TaxContext(state, jurisdiction, state_bp, LocalTaxRate.bp_for(jurisdiction, day))
+
+
+def _line_inputs(lines):
+    return [money.LineInput(li.unit_cents, li.qty_milli, li.discount_cents, li.taxable) for li in lines]
+
+
 def preview_totals(doc, on_date=None):
-    """Live totals for the editor and the API. Same function approval uses."""
-    rate = TaxRate.for_date(on_date or today())
-    return money.compute_totals(
-        [money.LineInput(li.unit_cents, li.qty_milli, li.discount_cents, li.taxable) for li in doc.lines.all()],
-        rate.rate_bp,
-        customer_exempt=doc.customer.tax_exempt,
-        donated=doc.donated,
+    """Live totals for the editor and the API. Same function approval uses.
+    Returns (totals, context); context.missing means the editor shows the address warning."""
+    lines = list(doc.lines.all())
+    ctx = tax_context(doc, doc.customer, on_date or today(), lines)
+    totals = money.compute_totals(_line_inputs(lines), ctx.state_bp, ctx.local_bp, customer_exempt=doc.customer.tax_exempt, donated=doc.donated)
+    return totals, ctx
+
+
+def _get_jurisdiction(jurisdiction):
+    if jurisdiction is None or isinstance(jurisdiction, TaxJurisdiction):
+        return jurisdiction
+    return TaxJurisdiction.objects.get(pk=jurisdiction)
+
+
+def propose_tax_location(actor: ActorRef, customer, state, jurisdiction=None, address="", checked_on=None, source=""):
+    """Ledger or Blake proposes; nothing applies until Blake confirms."""
+    require(actor, "propose_tax_location", "customer", customer.pk)
+    state = (state or "").upper()
+    jurisdiction = _get_jurisdiction(jurisdiction)
+    if state == HOME_STATE and jurisdiction is None:
+        raise RuleError("an Iowa location needs its local jurisdiction (city or rural county)")
+    with transaction.atomic():
+        prop = TaxLocationProposal.objects.create(
+            customer=customer, state=state, jurisdiction=jurisdiction, address=address, checked_on=checked_on, source=source, proposed_by=actor.kind
+        )
+        Customer.objects.filter(pk=customer.pk).update(tax_location_pending=True)
+        _log(actor, "propose_tax_location", customer, after={"proposal_id": prop.pk, "state": state, "jurisdiction": getattr(jurisdiction, "name", "")})
+    return prop
+
+
+def confirm_tax_location(actor: ActorRef, customer, state=None, jurisdiction=None, checked_on=None, source="", proposal=None):
+    """Blake confirms a tax location, either a proposal or values he enters."""
+    require(actor, "confirm_tax_location", "customer", customer.pk)
+    with transaction.atomic():
+        c = Customer.objects.select_for_update().get(pk=customer.pk)
+        if proposal is not None:
+            prop = TaxLocationProposal.objects.select_for_update().get(pk=proposal.pk, customer=c)
+            if prop.status != TaxLocationProposal.Status.PENDING:
+                raise RuleError("this proposal was already decided")
+            state, jurisdiction, checked_on, source = prop.state, prop.jurisdiction, prop.checked_on, prop.source
+            if prop.address:
+                c.address = prop.address
+        state = (state or "").upper()
+        jurisdiction = _get_jurisdiction(jurisdiction)
+        if len(state) != 2:
+            raise RuleError("give the two-letter state")
+        if state == HOME_STATE and jurisdiction is None:
+            raise RuleError("an Iowa location needs its local jurisdiction (city or rural county)")
+        before = {**customer_state(c), **_location_state(c)}
+        c.tax_state, c.tax_jurisdiction = state, jurisdiction if state == HOME_STATE else None
+        c.tax_location_checked_on, c.tax_location_source = checked_on or today(), source
+        c.tax_location_confirmed_at, c.tax_location_pending = timezone.now(), False
+        c.save()
+        if proposal is not None:
+            TaxLocationProposal.objects.filter(pk=prop.pk).update(status=TaxLocationProposal.Status.CONFIRMED, decided_at=timezone.now())
+        TaxLocationProposal.objects.filter(customer=c, status=TaxLocationProposal.Status.PENDING).exclude(pk=getattr(proposal, "pk", None)).update(
+            status=TaxLocationProposal.Status.REJECTED, decided_at=timezone.now()
+        )
+        _log(actor, "confirm_tax_location", c, before=before, after={**customer_state(c), **_location_state(c)})
+    return c
+
+
+def _location_state(c):
+    return {
+        "tax_state": c.tax_state,
+        "tax_jurisdiction": getattr(c.tax_jurisdiction, "name", ""),
+        "tax_location_checked_on": c.tax_location_checked_on,
+        "tax_location_pending": c.tax_location_pending,
+    }
+
+
+# --- tax report -----------------------------------------------------------------
+
+
+def tax_report(start, end):
+    """Sales tax by local jurisdiction for issued invoices and credit notes dated start..end (Central),
+    plus exempt, non-taxable and out-of-state sales, and tax received from payments in the period."""
+    rows, exempt, non_taxable, out_of_state = {}, {}, 0, 0
+    docs = (
+        Document.objects.filter(kind__in=[D.Kind.INVOICE, D.Kind.CREDIT_NOTE], issue_date__gte=start, issue_date__lte=end)
+        .exclude(status__in=[S.DRAFT, S.VOID])
+        .exclude(source="stripe_import")
+        .select_related("tax_jurisdiction")
     )
+    totals = {"taxable_cents": 0, "state_tax_cents": 0, "local_tax_cents": 0, "tax_cents": 0}
+    for d in docs:
+        sign = -1 if d.kind == D.Kind.CREDIT_NOTE else 1
+        sales = d.subtotal_cents - d.discount_cents
+        snap = d.customer_snapshot or {}
+        if d.donated:
+            continue  # nothing sold
+        if snap.get("tax_exempt"):
+            exempt[snap.get("name", "?")] = exempt.get(snap.get("name", "?"), 0) + sign * sales
+            continue
+        if d.out_of_state:
+            out_of_state += sign * sales
+            continue
+        non_taxable += sign * (sales - d.taxable_cents)
+        if d.taxable_cents:
+            key = d.tax_jurisdiction.name if d.tax_jurisdiction else "Iowa (no local option)"
+            row = rows.setdefault(key, {"jurisdiction": key, "local_rate_bp": d.local_rate_bp or 0, "taxable_cents": 0, "state_tax_cents": 0, "local_tax_cents": 0})
+            row["taxable_cents"] += sign * d.taxable_cents
+            row["state_tax_cents"] += sign * d.state_tax_cents
+            row["local_tax_cents"] += sign * d.local_tax_cents
+            totals["taxable_cents"] += sign * d.taxable_cents
+            totals["state_tax_cents"] += sign * d.state_tax_cents
+            totals["local_tax_cents"] += sign * d.local_tax_cents
+            totals["tax_cents"] += sign * d.tax_cents
+
+    received = {"tax_cents": 0, "state_tax_cents": 0, "local_tax_cents": 0, "other_cents": 0}
+    for p in Payment.objects.filter(received_on__gte=start, received_on__lte=end).select_related("invoice"):
+        inv = p.invoice
+        tax_part, other = money.split_payment_tax(p.applied_cents, inv.tax_cents, inv.total_cents)
+        state_part = money.div_round_half_up(tax_part * inv.state_tax_cents, inv.tax_cents) if inv.tax_cents else 0
+        received["tax_cents"] += tax_part
+        received["state_tax_cents"] += state_part
+        received["local_tax_cents"] += tax_part - state_part
+        received["other_cents"] += other
+    return {
+        "start": start,
+        "end": end,
+        "jurisdictions": sorted(rows.values(), key=lambda r: r["jurisdiction"]),
+        "exempt_sales": [{"customer": k, "sales_cents": v} for k, v in sorted(exempt.items())],
+        "non_taxable_cents": non_taxable,
+        "out_of_state_cents": out_of_state,
+        "invoiced": totals,
+        "received": received,
+    }
 
 
 # --- numbering + approval -----------------------------------------------------
@@ -291,21 +482,20 @@ def approve(actor: ActorRef, doc, now=None, render_pdf=None):
                 raise RuleError("add at least one line before approving")
             day = today(now)
             settings = BusinessSettings.load()
-            rate = TaxRate.for_date(day)
             customer = Customer.objects.select_for_update().get(pk=d.customer_id)
+            ctx = tax_context(d, customer, day, lines)
+            if ctx.missing:
+                raise RuleError(MISSING_LOCATION)  # before any number is taken
             before = document_state(d)
-            totals = money.compute_totals(
-                [money.LineInput(li.unit_cents, li.qty_milli, li.discount_cents, li.taxable) for li in lines],
-                rate.rate_bp,
-                customer_exempt=customer.tax_exempt,
-                donated=d.donated,
-            )
+            totals = money.compute_totals(_line_inputs(lines), ctx.state_bp, ctx.local_bp, customer_exempt=customer.tax_exempt, donated=d.donated)
             if d.kind == D.Kind.CREDIT_NOTE:
                 _check_credit_note_amount(d, totals.total_cents)
             for li, res in zip(lines, totals.lines):
                 li.line_cents, li.tax_rate_bp, li.tax_cents = res.net_cents, res.tax_rate_bp, res.tax_cents
-                li.taxable = res.taxable
-                li.save(update_fields=["line_cents", "tax_rate_bp", "tax_cents", "taxable"])
+                li.state_rate_bp, li.state_tax_cents = res.state_rate_bp, res.state_tax_cents
+                li.local_rate_bp, li.local_tax_cents = res.local_rate_bp, res.local_tax_cents
+                li.tax_jurisdiction = ctx.jurisdiction if res.taxable else None
+                li.save()
 
             series = D.SERIES[d.kind]
             seq = _next_number(series, day.year)
@@ -313,8 +503,11 @@ def approve(actor: ActorRef, doc, now=None, render_pdf=None):
             d.number = format_number(series, day.year, seq)
             d.issue_date = day
             d.due_date = day + dt.timedelta(days=settings.net_days) if d.kind == D.Kind.INVOICE else None
-            d.tax_rate_bp = rate.rate_bp
-            d.customer_snapshot = {**customer_state(customer), "id": customer.pk}
+            d.tax_state, d.tax_jurisdiction, d.out_of_state = ctx.state, ctx.jurisdiction, ctx.out_of_state
+            d.state_rate_bp, d.local_rate_bp, d.tax_rate_bp = ctx.state_bp, ctx.local_bp, ctx.state_bp + ctx.local_bp
+            d.tax_label = ctx.label if totals.tax_cents or ctx.out_of_state else ""
+            d.state_tax_cents, d.local_tax_cents = totals.state_tax_cents, totals.local_tax_cents
+            d.customer_snapshot = audit._jsonable({**customer_state(customer), **_location_state(customer), "id": customer.pk})
             d.business_snapshot = {
                 "name": settings.name,
                 "address_line1": settings.address_line1,

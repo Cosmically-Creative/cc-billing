@@ -20,7 +20,7 @@ def test_floats_are_rejected_everywhere():
     with pytest.raises(TypeError):
         LineInput(unit_cents=100, qty_milli=1.5)
     with pytest.raises(TypeError):
-        compute_totals([LineInput(100)], 7.0)
+        compute_totals([LineInput(100)], 6.0, 1)
     with pytest.raises(TypeError):
         money.validate_online_amount(10.0, 100, 100)
     with pytest.raises(TypeError):
@@ -35,7 +35,7 @@ def test_fractional_quantity_without_floats():
 
 
 def test_discount_reduces_taxable_amount():
-    t = compute_totals([LineInput(unit_cents=90000, discount_cents=10000, taxable=True)], 700)
+    t = compute_totals([LineInput(unit_cents=90000, discount_cents=10000, taxable=True)], 600, 100)
     assert (t.subtotal_cents, t.discount_cents, t.taxable_cents, t.tax_cents, t.total_cents) == (90000, 10000, 80000, 5600, 85600)
 
 
@@ -45,7 +45,7 @@ def test_discount_cannot_exceed_line():
 
 
 def test_donated_shows_value_but_owes_nothing():
-    t = compute_totals([LineInput(65000, taxable=True)], 700, donated=True)
+    t = compute_totals([LineInput(65000, taxable=True)], 600, 100, donated=True)
     assert t.value_cents == 65000 and t.total_cents == 0 and t.tax_cents == 0
 
 
@@ -74,3 +74,22 @@ def test_parse_usd_rejects(text):
 def test_format_usd():
     assert money.format_usd(376316) == "$3,763.16"
     assert money.format_usd(-4000) == "-$40.00"
+
+
+@pytest.mark.parametrize(
+    "net,state,local,expected",
+    [(10000, 600, 100, (700, 600, 100)), (3333, 600, 100, (233, 200, 33)), (10000, 600, 0, (600, 600, 0)), (1, 600, 100, (0, 0, 0)), (7, 600, 100, (0, 0, 0)), (8, 600, 100, (1, 0, 1))],
+)
+def test_state_local_split_always_adds_up(net, state, local, expected):
+    assert money.split_line_tax(net, state, local) == expected
+
+
+def test_split_adds_up_for_every_cent_amount():
+    for net in range(0, 20000):
+        combined, s, l = money.split_line_tax(net, 600, 100)
+        assert combined == s + l and l >= 0
+
+
+@pytest.mark.parametrize("bp,text", [(700, "7%"), (600, "6%"), (650, "6.5%"), (725, "7.25%"), (0, "0%")])
+def test_format_rate(bp, text):
+    assert money.format_rate(bp) == text

@@ -42,29 +42,77 @@ class BusinessSettings(models.Model):
         return obj
 
 
-class TaxRate(models.Model):
-    name = models.CharField(max_length=100, default="Iowa sales tax")
-    rate_bp = models.PositiveIntegerField()  # 700 = 7.00%
-    state_bp = models.PositiveIntegerField(default=0)
-    local_bp = models.PositiveIntegerField(default=0)
-    effective_from = models.DateField(unique=True)
+class StateTaxRate(models.Model):
+    """Iowa's state sales tax (600 = 6.00%), with start and optional end date."""
+
+    state = models.CharField(max_length=2, default="IA")
+    rate_bp = models.PositiveIntegerField()
+    effective_from = models.DateField()
+    effective_to = models.DateField(null=True, blank=True)  # inclusive
 
     class Meta:
-        ordering = ["-effective_from"]
         constraints = [
-            models.CheckConstraint(condition=Q(rate_bp__lte=10000), name="tax_rate_max_100pct"),
-            models.CheckConstraint(
-                condition=Q(state_bp=0, local_bp=0) | Q(rate_bp=models.F("state_bp") + models.F("local_bp")),
-                name="tax_rate_parts_add_up",
-            ),
+            models.UniqueConstraint(fields=["state", "effective_from"], name="one_state_rate_per_start"),
+            models.CheckConstraint(condition=Q(rate_bp__lte=10000), name="state_rate_max"),
         ]
 
     @classmethod
-    def for_date(cls, day):
-        rate = cls.objects.filter(effective_from__lte=day).order_by("-effective_from").first()
+    def for_date(cls, state, day):
+        rate = (
+            cls.objects.filter(state=state, effective_from__lte=day)
+            .filter(Q(effective_to__isnull=True) | Q(effective_to__gte=day))
+            .order_by("-effective_from")
+            .first()
+        )
         if rate is None:
-            raise LookupError(f"no tax rate is in effect on {day}")
+            raise LookupError(f"no {state} state tax rate is in effect on {day}")
         return rate
+
+
+class TaxJurisdiction(models.Model):
+    """A local option jurisdiction: a city, or the rural (unincorporated) part of a county."""
+
+    class Kind(models.TextChoices):
+        CITY = "city", "City"
+        RURAL_COUNTY = "rural_county", "County (rural)"
+
+    state = models.CharField(max_length=2, default="IA")
+    name = models.CharField(max_length=100)  # shown on the PDF: "Iowa + Sioux Center"
+    kind = models.CharField(max_length=14, choices=Kind.choices)
+    county = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["state", "name", "kind"], name="unique_jurisdiction")]
+
+    def __str__(self):
+        return self.name
+
+
+class LocalTaxRate(models.Model):
+    """Local option rate for one jurisdiction (100 = 1.00%, or 0), with start and optional end date."""
+
+    jurisdiction = models.ForeignKey(TaxJurisdiction, on_delete=models.PROTECT, related_name="rates")
+    rate_bp = models.PositiveIntegerField()
+    effective_from = models.DateField()
+    effective_to = models.DateField(null=True, blank=True)  # inclusive; local options can sunset
+    checked_on = models.DateField(null=True, blank=True)
+    source = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["jurisdiction", "effective_from"], name="one_local_rate_per_start"),
+            models.CheckConstraint(condition=Q(rate_bp__lte=10000), name="local_rate_max"),
+        ]
+
+    @classmethod
+    def bp_for(cls, jurisdiction, day):
+        rate = (
+            cls.objects.filter(jurisdiction=jurisdiction, effective_from__lte=day)
+            .filter(Q(effective_to__isnull=True) | Q(effective_to__gte=day))
+            .order_by("-effective_from")
+            .first()
+        )
+        return rate.rate_bp if rate else 0
 
 
 class Customer(models.Model):
@@ -75,6 +123,14 @@ class Customer(models.Model):
     notes = models.TextField(blank=True)
     tax_exempt = models.BooleanField(default=False)  # Blake only
     exemption_note = models.CharField(max_length=200, blank=True)  # e.g. certificate on file
+    # Confirmed tax location (where the client receives the work). Only Blake confirms it.
+    tax_state = models.CharField(max_length=2, blank=True)  # "" = not set yet
+    tax_jurisdiction = models.ForeignKey(TaxJurisdiction, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    tax_location_checked_on = models.DateField(null=True, blank=True)
+    tax_location_source = models.CharField(max_length=200, blank=True)
+    tax_location_confirmed_at = models.DateTimeField(null=True, blank=True)
+    # Set when the address changed after confirmation; the confirmed location keeps applying.
+    tax_location_pending = models.BooleanField(default=False)
     stripe_customer_id = models.CharField(max_length=64, blank=True)
     source = models.CharField(max_length=20, default="app")  # app | stripe_import
     created_at = models.DateTimeField(auto_now_add=True)
@@ -82,6 +138,32 @@ class Customer(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def tax_location_status(self):
+        if not self.tax_state:
+            return "pending Blake" if self.tax_location_pending else "not set"
+        return "pending Blake" if self.tax_location_pending else "confirmed"
+
+
+class TaxLocationProposal(models.Model):
+    """Ledger (or Blake) proposes; only Blake confirms. Nothing changes until he does."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Waiting for Blake"
+        CONFIRMED = "confirmed", "Confirmed"
+        REJECTED = "rejected", "Rejected"
+
+    customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name="tax_proposals")
+    state = models.CharField(max_length=2)
+    jurisdiction = models.ForeignKey(TaxJurisdiction, null=True, blank=True, on_delete=models.PROTECT)
+    address = models.TextField(blank=True)
+    checked_on = models.DateField(null=True, blank=True)
+    source = models.CharField(max_length=200, blank=True)
+    proposed_by = models.CharField(max_length=12)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
 
 
 class Product(models.Model):
@@ -157,7 +239,19 @@ class Document(models.Model):
     # Frozen at approval.
     customer_snapshot = models.JSONField(null=True, blank=True)
     business_snapshot = models.JSONField(null=True, blank=True)
-    tax_rate_bp = models.PositiveIntegerField(null=True, blank=True)
+    # Per-invoice tax location override (Blake only, drafts only).
+    tax_override_state = models.CharField(max_length=2, blank=True)
+    tax_override_jurisdiction = models.ForeignKey(TaxJurisdiction, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    # Tax frozen at approval.
+    tax_state = models.CharField(max_length=2, blank=True)
+    tax_jurisdiction = models.ForeignKey(TaxJurisdiction, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    out_of_state = models.BooleanField(default=False)
+    tax_label = models.CharField(max_length=120, blank=True)  # "Sales tax (7%, Iowa + Sioux Center)"
+    tax_rate_bp = models.PositiveIntegerField(null=True, blank=True)  # combined
+    state_rate_bp = models.PositiveIntegerField(null=True, blank=True)
+    local_rate_bp = models.PositiveIntegerField(null=True, blank=True)
+    state_tax_cents = models.BigIntegerField(default=0)
+    local_tax_cents = models.BigIntegerField(default=0)
     subtotal_cents = models.BigIntegerField(default=0)
     discount_cents = models.BigIntegerField(default=0)
     taxable_cents = models.BigIntegerField(default=0)
@@ -201,6 +295,7 @@ class Document(models.Model):
             ),
             models.CheckConstraint(condition=~Q(status="draft") | Q(seq__isnull=True), name="drafts_have_no_number"),
             models.CheckConstraint(condition=Q(total_cents__gte=0) & Q(tax_cents__gte=0), name="document_amounts_not_negative"),
+            models.CheckConstraint(condition=Q(tax_cents=models.F("state_tax_cents") + models.F("local_tax_cents")), name="document_tax_parts_add_up"),
         ]
         indexes = [models.Index(fields=["kind", "status"]), models.Index(fields=["due_date"])]
 
@@ -228,12 +323,20 @@ class LineItem(models.Model):
     taxable = models.BooleanField(default=False)
     # Filled at approval.
     line_cents = models.BigIntegerField(default=0)
-    tax_rate_bp = models.PositiveIntegerField(default=0)
-    tax_cents = models.BigIntegerField(default=0)
+    tax_rate_bp = models.PositiveIntegerField(default=0)  # combined
+    tax_cents = models.BigIntegerField(default=0)  # combined = state + local
+    state_rate_bp = models.PositiveIntegerField(default=0)
+    state_tax_cents = models.BigIntegerField(default=0)
+    local_rate_bp = models.PositiveIntegerField(default=0)
+    local_tax_cents = models.BigIntegerField(default=0)
+    tax_jurisdiction = models.ForeignKey(TaxJurisdiction, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
 
     class Meta:
         ordering = ["position", "pk"]
-        constraints = [models.CheckConstraint(condition=Q(qty_milli__gt=0), name="line_qty_positive")]
+        constraints = [
+            models.CheckConstraint(condition=Q(qty_milli__gt=0), name="line_qty_positive"),
+            models.CheckConstraint(condition=Q(tax_cents=models.F("state_tax_cents") + models.F("local_tax_cents")), name="line_tax_parts_add_up"),
+        ]
 
 
 class Payment(models.Model):
