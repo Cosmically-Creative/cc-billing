@@ -1,10 +1,15 @@
-# cc-billing app image. WeasyPrint's system libraries (Pango) are added with the PDF step.
+# cc-billing app image.
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# WeasyPrint needs Pango and HarfBuzz; fonts are bundled with the app (Rubik), not taken from the OS.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system app && useradd --system --gid app --home /app app
 WORKDIR /app

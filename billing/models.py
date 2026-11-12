@@ -261,6 +261,9 @@ class Document(models.Model):
     total_cents = models.BigIntegerField(default=0)
     pdf_file = models.CharField(max_length=300, blank=True)
     pdf_sha256 = models.CharField(max_length=64, blank=True)
+    # Unguessable code for the client pay page, printed on the PDF; set at approval (invoices only).
+    pay_code = models.CharField(max_length=24, blank=True)
+    pay_link_disabled = models.BooleanField(default=False)  # Blake can switch an invoice's pay link off
 
     prepared_by = models.CharField(max_length=12, choices=Actor.choices, default=Actor.BLAKE)
     source = models.CharField(max_length=20, default="app")  # app | stripe_import
@@ -285,6 +288,7 @@ class Document(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["series", "year", "seq"], condition=Q(seq__isnull=False), name="unique_document_number"),
             models.UniqueConstraint(fields=["number"], condition=~Q(number=""), name="unique_document_number_text"),
+            models.UniqueConstraint(fields=["pay_code"], condition=~Q(pay_code=""), name="unique_pay_code"),
             models.UniqueConstraint(
                 fields=["late_fee_for", "late_fee_period"],
                 condition=Q(late_fee_for__isnull=False) & ~Q(status="void"),

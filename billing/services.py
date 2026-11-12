@@ -519,6 +519,8 @@ def approve(actor: ActorRef, doc, now=None, render_pdf=None):
             d.taxable_cents, d.tax_cents = totals.taxable_cents, totals.tax_cents
             d.value_cents, d.total_cents = totals.value_cents, totals.total_cents
             d.approved_at = now
+            if d.kind == D.Kind.INVOICE and not d.donated:
+                d.pay_code = secrets.token_urlsafe(12)
             d.status = S.APPROVED
             if render_pdf is not None:
                 d.pdf_file, d.pdf_sha256 = render_pdf(d)

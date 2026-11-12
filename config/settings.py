@@ -128,6 +128,7 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_ROOT = Path(env("CCB_MEDIA_ROOT", str(BASE_DIR / "media")))
+CCB_BASE_URL = env("CCB_BASE_URL", "https://billing.cosmicallycreative.com")
 
 LOGGING = {
     "version": 1,
