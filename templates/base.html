@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Cosmically Creative Billing{% endblock %}</title>
+  <style>
+    /* Placeholder styling until Prism's design is implemented. */
+    :root { --cc-blue:#2d54c7; --cc-yellow:#ffe642; --cc-navy:#0b1532; }
+    body { font-family: Rubik, system-ui, sans-serif; margin:0; background:#f5f6fa; color:var(--cc-navy); }
+    main { max-width: 28rem; margin: 4rem auto; background:#fff; padding:2rem; border-radius:12px; border-top:4px solid var(--cc-blue); }
+    label { display:block; margin:.75rem 0 .25rem; font-weight:500; }
+    input { width:100%; padding:.6rem; font-size:1rem; border:1px solid #c9cfdf; border-radius:8px; box-sizing:border-box; }
+    button { margin-top:1.25rem; padding:.7rem 1.2rem; background:var(--cc-blue); color:#fff; border:0; border-radius:8px; font-size:1rem; cursor:pointer; }
+    .error { color:#a8071a; background:#fff1f0; padding:.6rem; border-radius:8px; }
+    code { word-break: break-all; }
+  </style>
+</head>
+<body><main>{% block content %}{% endblock %}</main></body>
+</html>

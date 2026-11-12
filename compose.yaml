@@ -1,0 +1,49 @@
+# Two containers: the app and PostgreSQL. Host Caddy proxies billing.cosmicallycreative.com
+# to 127.0.0.1:3040. Not deployed yet; see docs/deploy.md.
+name: cc-billing
+
+services:
+  db:
+    image: postgres:18-alpine  # major version pinned; upgraded by hand, not by the nightly updater
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 384m
+    networks: [internal]
+
+  app:
+    build: .
+    image: cc-billing:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      CCB_MEDIA_ROOT: /data/media
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3040:8000"
+    volumes:
+      - ./data:/data  # issued PDFs and exemption certificates (backed up nightly)
+    mem_limit: 768m
+    networks:
+      - internal
+      # - openbot-net   # added at deploy so Ledger's MCP layer can reach the API privately
+
+volumes:
+  db-data:
+
+networks:
+  internal:
+  # openbot-net:
+  #   external: true
