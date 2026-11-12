@@ -172,6 +172,7 @@ class Product(models.Model):
         HOSTING = "hosting", "Hosting"
         DOMAIN = "domain", "Domain"
         PLATFORM = "platform", "Platform renewal"
+        DRONE = "drone", "Drone photo/video"
         LATE_FEE = "late_fee", "Late fee"
         OTHER = "other", "Other"
 
