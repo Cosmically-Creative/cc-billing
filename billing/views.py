@@ -19,8 +19,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from . import audit, delivery, money, pdf, services as svc
-from .forms import CustomerForm, DraftForm, LineFormSet, PaymentForm, PeriodForm, SendForm, SettingsForm, TaxLocationForm
-from .models import AuditEvent, BusinessSettings, Customer, Document, LineItem, PaidCopy, Payment, Product, Receipt, RecurringTemplate, TaxLocationProposal
+from .forms import CustomerForm, DraftForm, LineFormSet, PaymentForm, PeriodForm, SendForm, SettingsForm, TaxLocationForm, RefundResolutionForm
+from .models import AuditEvent, BusinessSettings, Customer, Document, LineItem, PaidCopy, Payment, Product, Receipt, Refund, RecurringTemplate, TaxLocationProposal
 from .permissions import ActorRef, BillingError
 
 D, S = Document, Document.Status
@@ -169,7 +169,7 @@ def proposal_decide(request, pk, proposal_id):
 def _draft_preview(doc, line_data):
     lines = [SimpleNamespace(**{**x, 'taxable': x['taxable']}) for x in line_data]
     ctx = svc.tax_context(doc, doc.customer, svc.today(), lines)
-    totals = money.compute_totals([money.LineInput(x['unit_cents'], x['qty_milli'], x['discount_cents'], x['taxable']) for x in line_data], ctx.state_bp, ctx.local_bp, customer_exempt=doc.customer.tax_exempt, donated=doc.donated)
+    totals = money.compute_totals([money.LineInput(x['unit_cents'], x['qty_milli'], x['discount_cents'], x['taxable']) for x in line_data], ctx.state_bp, ctx.local_bp, customer_exempt=svc.exemption_for(doc, doc.customer), donated=doc.donated)
     for name in ('subtotal_cents', 'discount_cents', 'taxable_cents', 'tax_cents', 'state_tax_cents', 'local_tax_cents', 'total_cents', 'value_cents'):
         setattr(doc, name, getattr(totals, name))
     for li, result in zip(lines, totals.lines):
@@ -232,6 +232,7 @@ def document_detail(request, pk):
     return ui(request, 'billing/document.html', doc.display_number or f'Draft {doc.get_kind_display().lower()}', doc=doc, badges=svc.badges(doc),
               pdf_context=pdf.document_context(doc, payments=[]) if not doc.is_draft else None,
               totals=totals, tax_context=ctx, balance=money.format_usd(max(svc.balance_cents(doc), 0)),
+              pending_refunds=[dict(refund=r,form=RefundResolutionForm(doc)) for r in Refund.objects.filter(payment__invoice=doc,resolution='pending')],
               history=AuditEvent.objects.filter(entity='document', entity_id=str(doc.pk)).order_by('-pk'), receipts=Receipt.objects.filter(payment__invoice=doc).select_related('payment'), paid_copies=doc.paid_copies.all(), email_attempts=doc.emails.order_by('-pk'),
               can_send=doc.source == 'app' and doc.status in [S.APPROVED, S.SENT, S.PARTLY_PAID, S.PAID, S.ACCEPTED])
 
@@ -399,3 +400,20 @@ def void_pdf(request, pk):
     doc = get_object_or_404(D, pk=pk, status='void')
     replacement = doc.replaced_by.exclude(status='draft').order_by('pk').first()
     return HttpResponse(pdf.render_pdf_bytes(pdf.document_context(doc, stamp='void', replacement=replacement)), content_type='application/pdf', headers={'Cache-Control':'no-store, private', 'Content-Disposition':f'attachment; filename="{doc.display_number}-VOID.pdf"'})
+
+
+@owner
+@require_POST
+def refund_resolve(request, pk):
+    refund=get_object_or_404(Refund.objects.select_related('payment__invoice'),pk=pk,resolution='pending')
+    invoice=refund.payment.invoice
+    if invoice.source!='app': return HttpResponse('Imported history is read-only.',status=409)
+    form=RefundResolutionForm(invoice,request.POST)
+    if form.is_valid():
+        try:
+            svc.resolve_refund(request.actor,refund,form.cleaned_data['resolution'],credit_note=form.cleaned_data.get('credit_note'),render_pdf=pdf.render_approved)
+            messages.success(request,'Refund resolution recorded. No email sent.')
+            return redirect('billing:document',invoice.pk)
+        except BillingError as exc:
+            form.add_error(None,str(exc))
+    return ui(request,'billing/form.html','Review refund resolution',form=form,submit_label='Confirm refund resolution')

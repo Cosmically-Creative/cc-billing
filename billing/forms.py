@@ -168,3 +168,30 @@ class PeriodForm(forms.Form):
         if data.get('start') and data.get('end') and data['start'] > data['end']:
             raise forms.ValidationError('The end date must be on or after the start date.')
         return data
+
+
+class PayForm(forms.Form):
+    choice=forms.ChoiceField(label='Payment amount',choices=[('full','Pay the full balance'),('other','Pay another amount')],widget=forms.RadioSelect,initial='full')
+    amount=DollarsField(label='Other amount ($)',required=False,minimum=1)
+    request_id=forms.UUIDField(widget=forms.HiddenInput)
+
+    def clean(self):
+        data=super().clean()
+        if data.get('choice')=='other' and data.get('amount') is None:
+            self.add_error('amount','Enter the amount you want to pay.')
+        return data
+
+
+class RefundResolutionForm(forms.Form):
+    resolution=forms.ChoiceField(choices=[('reopen','Reopen the refunded balance'),('credit_note','Approve reviewed credit note and settle refund')])
+    credit_note=forms.ModelChoiceField(Document.objects.none(),required=False,label='Reviewed credit-note draft')
+
+    def __init__(self,invoice,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.fields['credit_note'].queryset=Document.objects.filter(kind='credit_note',credit_for=invoice,status='draft',source='app')
+
+    def clean(self):
+        data=super().clean()
+        if data.get('resolution')=='credit_note' and not data.get('credit_note'):
+            self.add_error('credit_note','Choose a draft for the refunded work, with its tax treatment reviewed.')
+        return data

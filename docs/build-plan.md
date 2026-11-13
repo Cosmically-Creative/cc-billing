@@ -21,3 +21,16 @@ in-memory email integration tests. See [the phase review](local-build-review.md)
 was not a completed build; this update follows review and integration of the worker drafts.
 No deployment or live email has occurred. API/MCP, public payment integration and install checks
 remain. Dates above are planning targets, not a claim that work runs unattended between turns.
+
+
+## Integration continuation (2026-11-13)
+
+Reviewed PDF/screens/sending build was committed and pushed as `b02bfdf`; its GitHub tests and
+Docker build passed. Ledger API/MCP and hosted Checkout/webhook code are now implemented with
+read/draft restrictions, one active reservation per invoice, delayed-bank handling, exact-once
+payment/receipt records and reviewed refund resolution. Local full suite: 193 pass, one January
+import test skipped; three additional token/environment/reconciliation checks also passed. CI adds a fake DB/media restore and built-container runtime/PDF smoke.
+
+External account sessions, real sandbox Checkout, SMTP and actual staging/offsite restore remain
+checks for the separately approved test install. All transport/live-mode switches remain off.
+No background build or deployment is implied between turns.

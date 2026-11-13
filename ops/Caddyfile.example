@@ -1,0 +1,7 @@
+# Candidate configuration only. Do not install or change DNS without approval.
+billing.cosmicallycreative.com {
+    @private path /api* /mcp* /admin*
+    respond @private 404
+    reverse_proxy 127.0.0.1:3040
+    # Avoid access logs containing invoice capability URLs or query strings.
+}

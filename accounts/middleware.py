@@ -12,6 +12,8 @@ PUBLIC_PREFIXES = (
     "/pay/",  # client pay page (added later)
     "/stripe/webhook",  # signature-verified (added later)
     "/static/",
+    "/api/",  # independent bearer authentication, never cookie authentication
+    "/mcp",
 )
 
 

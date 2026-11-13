@@ -9,3 +9,6 @@ gunicorn>=23,<24
 weasyprint>=66,<67
 # Time-zone data inside the app, so Central time never depends on the OS image.
 tzdata>=2025.2
+# Private API/MCP schemas and hosted Checkout transport.
+jsonschema>=4.25,<5
+stripe>=16.1,<17

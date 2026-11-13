@@ -317,3 +317,28 @@ def test_dummy_mail_backend_cannot_mark_email_sent(blake, issued, settings):
     with pytest.raises(RuleError, match='Configure a delivery backend'):
         delivery.send_document(blake, doc, uuid.uuid4(), 'sample@example.com', 'Sample', 'Sample')
     assert not DocumentEmail.objects.exists()
+
+
+def test_owner_refund_resolution_requires_reviewed_tax_credit(owner_client,issued,blake):
+    from billing.models import CustomerCredit,Refund
+    doc=issued()
+    svc.record_stripe_payment('evt_refund_fixture_payment','checkout.session.completed',{'sample':True},doc.pk,10700,0,'pi_refund_fixture',dt.date(2026,12,12))
+    refund=svc.record_stripe_refund('evt_refund_fixture','refund.created',{'sample':True},'pi_refund_fixture','re_fixture',4000)
+    page=owner_client.get(reverse('billing:document',args=[doc.pk]))
+    assert b'Refund needs your decision' in page.content
+    response=owner_client.post(reverse('billing:resolve_refund',args=[refund.pk]),{'resolution':'credit_note'})
+    assert response.status_code==200
+    refund.refresh_from_db();assert refund.resolution=='pending'
+    # Today's exemption can change; this credit still reverses the original taxable invoice.
+    svc.update_customer(blake,doc.customer,tax_exempt=True,exemption_note='Sample later exemption')
+    credit=svc.create_credit_note_draft(blake,doc,[dict(description='Sample returned work',unit_cents=3738,taxable=True)])
+    assert svc.preview_totals(credit)[0].total_cents==4000
+    assert not CustomerCredit.objects.exists()
+    response=owner_client.post(reverse('billing:resolve_refund',args=[refund.pk]),{'resolution':'credit_note','credit_note':credit.pk})
+    assert response.status_code==302
+    refund.refresh_from_db();credit.refresh_from_db();doc.refresh_from_db()
+    assert refund.resolution=='credit_note' and refund.credit_note_id==credit.pk
+    assert credit.number and credit.pdf_file and credit.total_cents==4000 and credit.tax_cents==262
+    assert credit.customer_snapshot['tax_exempt'] is False
+    assert svc.balance_cents(doc)==0 and not CustomerCredit.objects.exists()
+    assert not getattr(mail,'outbox',[])

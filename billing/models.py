@@ -544,3 +544,32 @@ class DocumentEmail(models.Model):
     last_error = models.CharField(max_length=300, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     sent_at = models.DateTimeField(null=True, blank=True)
+
+
+class CheckoutAttempt(models.Model):
+    """One online reservation per invoice. Ambiguous remote creation is never blindly replaced."""
+    class Status(models.TextChoices):
+        CREATING='creating','Creating / outcome unconfirmed'
+        OPEN='open','Checkout open'
+        PROCESSING='processing','Bank payment processing'
+        PAID='paid','Paid'
+        EXPIRED='expired','Expired'
+        FAILED='failed','Failed'
+    request_id=models.UUIDField(unique=True)
+    invoice=models.ForeignKey(Document,on_delete=models.PROTECT,related_name='checkouts')
+    amount_cents=models.PositiveIntegerField()
+    status=models.CharField(max_length=12,choices=Status.choices,default=Status.CREATING)
+    session_id=models.CharField(max_length=100,unique=True,null=True,blank=True)
+    session_url=models.URLField(max_length=1000,blank=True)
+    payment_intent_id=models.CharField(max_length=100,unique=True,null=True,blank=True)
+    integration_identifier=models.CharField(max_length=80)
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)
+    expires_at=models.DateTimeField(null=True,blank=True)
+    last_error=models.CharField(max_length=200,blank=True)
+
+    class Meta:
+        constraints=[
+            models.UniqueConstraint(fields=['invoice'],condition=Q(status__in=['creating','open','processing']),name='one_active_checkout_per_invoice'),
+            models.CheckConstraint(condition=Q(amount_cents__gte=50),name='checkout_at_least_stripe_minimum'),
+        ]

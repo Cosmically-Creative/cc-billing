@@ -13,3 +13,9 @@ htmlcov/
 /data/
 *.csv
 *.pdf
+# Deployment tokens, private material and database backups never belong in source.
+/private/
+*.key
+*.pem
+*.dump
+ledger-token*

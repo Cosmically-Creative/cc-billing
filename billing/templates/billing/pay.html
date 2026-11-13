@@ -1,0 +1,293 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pay invoice {{ invoice_number }} &middot; {{ business.name }}</title>
+  <style>
+    @font-face {
+      font-family: 'Rubik';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url("{% static 'billing/fonts/rubik-latin-400-normal.woff' %}") format('woff');
+    }
+    @font-face {
+      font-family: 'Rubik';
+      font-style: normal;
+      font-weight: 600;
+      font-display: swap;
+      src: url("{% static 'billing/fonts/rubik-latin-600-normal.woff' %}") format('woff');
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background-color: #F7F8FB;
+      color: #0B1532;
+      font-family: 'Rubik', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    .logo {
+      display: block;
+      width: 160px;
+      height: auto;
+      margin: 0 auto 24px;
+    }
+
+    .card {
+      background-color: #FFFFFF;
+      border: 1px solid #E4E8F0;
+      border-radius: 12px;
+      padding: 28px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #0B1532;
+      margin: 0 0 4px;
+    }
+
+    .subheading {
+      color: #5A6478;
+      font-size: 15px;
+      margin: 0 0 24px;
+    }
+
+    dl.amounts {
+      margin: 0 0 24px;
+    }
+
+    .amounts .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 10px 0;
+      border-bottom: 1px solid #E4E8F0;
+    }
+
+    .amounts .row:last-child {
+      border-bottom: none;
+    }
+
+    .amounts dt {
+      margin: 0;
+      color: #5A6478;
+      font-size: 15px;
+    }
+
+    .amounts dd {
+      margin: 0;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .amounts .balance dd {
+      color: #0B1532;
+    }
+
+    .notice {
+      background-color: #FFFDE7;
+      border-left: 4px solid #FFE642;
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #0B1532;
+      font-size: 15px;
+      margin: 0 0 24px;
+    }
+
+    .status-message {
+      border: 1px solid #E4E8F0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #5A6478;
+      font-size: 15px;
+      margin: 0 0 24px;
+    }
+
+    .errorlist { color:#A11A1A; }
+    form p {
+      margin: 0 0 16px;
+    }
+
+    form label {
+      display: block;
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: #0B1532;
+    }
+
+    form input[type="text"],
+    form input[type="number"],
+    form input:not([type]) {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #E4E8F0;
+      border-radius: 8px;
+      font: inherit;
+      color: #0B1532;
+      background-color: #FFFFFF;
+    }
+
+    form input:focus,
+    button:focus,
+    a:focus {
+      outline: 2px solid #2D54C7;
+      outline-offset: 2px;
+    }
+
+    button.pay-button {
+      display: block;
+      width: 100%;
+      padding: 14px 16px;
+      background-color: #2D54C7;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      font: inherit;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    button.pay-button:hover {
+      background-color: #2546A8;
+    }
+
+    .cancel-row {
+      margin-top: 16px;
+      text-align: center;
+    }
+
+    button.cancel-button {
+      background: none;
+      border: 1px solid #E4E8F0;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font: inherit;
+      font-size: 14px;
+      color: #5A6478;
+      cursor: pointer;
+    }
+
+    button.cancel-button:hover {
+      color: #0B1532;
+      border-color: #5A6478;
+    }
+
+    .download-row {
+      margin: 24px 0 0;
+      text-align: center;
+    }
+
+    .download-row a {
+      color: #2D54C7;
+      font-size: 15px;
+    }
+
+    .contact {
+      color: #5A6478;
+      font-size: 15px;
+      margin: 24px 0 0;
+    }
+
+    .contact a {
+      color: #2D54C7;
+    }
+
+    .secure-note {
+      color: #5A6478;
+      font-size: 13px;
+      text-align: center;
+      margin: 24px 0 0;
+    }
+
+    .accent-rule {
+      height: 4px;
+      width: 56px;
+      background-color: #FFE642;
+      border-radius: 2px;
+      margin: 0 0 20px;
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <img class="logo" src="{% static 'billing/cc-logo-v11.svg' %}" alt="{{ business.name }}" width="160">
+
+    <main class="card">
+      <div class="accent-rule"></div>
+
+      <h1>Invoice {{ invoice_number }}</h1>
+      <p class="subheading">Payment for {{ customer_name }} &middot; {{ business.name }}</p>
+
+      <dl class="amounts">
+        <div class="row">
+          <dt>Total</dt>
+          <dd>{{ total }}</dd>
+        </div>
+        <div class="row">
+          <dt>Payments and credits applied</dt>
+          <dd>{{ paid }}</dd>
+        </div>
+        <div class="row balance">
+          <dt>Balance due</dt>
+          <dd>{{ balance }}</dd>
+        </div>
+      </dl>
+
+      {% if pending_message %}
+        <p class="notice">{{ pending_message }}</p>
+      {% endif %}
+
+      {% if status_message %}<p class="status-message">{{ status_message }}</p>{% endif %}
+      {% if can_checkout and checkout_enabled %}
+        <p>{{ amount_hint }}</p>
+        <form action="" method="post" novalidate>
+          {% csrf_token %}
+          {{ form.as_p }}
+          <button type="submit" class="pay-button">Continue to secure payment</button>
+        </form>
+      {% else %}
+        <p class="contact">
+          Questions about this invoice? Contact {{ business.name }} at
+          <a href="mailto:{{ business.email }}">{{ business.email }}</a>
+          or <a href="tel:{{ business.phone }}">{{ business.phone }}</a>.
+        </p>
+      {% endif %}
+
+      {% if cancel_available %}
+        <div class="cancel-row">
+          <form action="{{ cancel_url }}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="cancel-button">Close the open checkout</button>
+          </form>
+        </div>
+      {% endif %}
+
+      {% if download_url %}
+        <p class="download-row"><a href="{{ download_url }}">Download invoice PDF</a></p>
+      {% endif %}
+
+      <p class="secure-note">Secure payment handled by Stripe.</p>
+    </main>
+  </div>
+</body>
+</html>

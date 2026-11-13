@@ -313,12 +313,20 @@ def _line_inputs(lines):
     return [money.LineInput(li.unit_cents, li.qty_milli, li.discount_cents, li.taxable) for li in lines]
 
 
+def exemption_for(doc, customer):
+    """A credit note reverses the original invoice's exemption decision, not today's flag."""
+    if doc.kind == D.Kind.CREDIT_NOTE and doc.credit_for_id:
+        original = Document.objects.get(pk=doc.credit_for_id)
+        return bool((original.customer_snapshot or {}).get("tax_exempt", False))
+    return customer.tax_exempt
+
+
 def preview_totals(doc, on_date=None):
     """Live totals for the editor and the API. Same function approval uses.
     Returns (totals, context); context.missing means the editor shows the address warning."""
     lines = list(doc.lines.all())
     ctx = tax_context(doc, doc.customer, on_date or today(), lines)
-    totals = money.compute_totals(_line_inputs(lines), ctx.state_bp, ctx.local_bp, customer_exempt=doc.customer.tax_exempt, donated=doc.donated)
+    totals = money.compute_totals(_line_inputs(lines), ctx.state_bp, ctx.local_bp, customer_exempt=exemption_for(doc, doc.customer), donated=doc.donated)
     return totals, ctx
 
 
@@ -475,6 +483,8 @@ def approve(actor: ActorRef, doc, now=None, render_pdf=None):
     require(actor, "approve", "document", doc.pk)
     now = now or timezone.now()
     with transaction.atomic():
+        if doc.kind == D.Kind.CREDIT_NOTE and doc.credit_for_id:
+            Document.objects.select_for_update().get(pk=doc.credit_for_id)
         d = _lock_draft(actor, doc, "approve")
         if d is not None:
             lines = list(d.lines.all())
@@ -487,7 +497,7 @@ def approve(actor: ActorRef, doc, now=None, render_pdf=None):
             if ctx.missing:
                 raise RuleError(MISSING_LOCATION)  # before any number is taken
             before = document_state(d)
-            totals = money.compute_totals(_line_inputs(lines), ctx.state_bp, ctx.local_bp, customer_exempt=customer.tax_exempt, donated=d.donated)
+            totals = money.compute_totals(_line_inputs(lines), ctx.state_bp, ctx.local_bp, customer_exempt=exemption_for(d, customer), donated=d.donated)
             if d.kind == D.Kind.CREDIT_NOTE:
                 _check_credit_note_amount(d, totals.total_cents)
             for li, res in zip(lines, totals.lines):
@@ -507,7 +517,7 @@ def approve(actor: ActorRef, doc, now=None, render_pdf=None):
             d.state_rate_bp, d.local_rate_bp, d.tax_rate_bp = ctx.state_bp, ctx.local_bp, ctx.state_bp + ctx.local_bp
             d.tax_label = ctx.label if totals.tax_cents or ctx.out_of_state else ""
             d.state_tax_cents, d.local_tax_cents = totals.state_tax_cents, totals.local_tax_cents
-            d.customer_snapshot = audit._jsonable({**customer_state(customer), **_location_state(customer), "id": customer.pk})
+            d.customer_snapshot = audit._jsonable({**customer_state(customer), **_location_state(customer), "id": customer.pk, "tax_exempt": exemption_for(d, customer)})
             d.business_snapshot = {
                 "name": settings.name,
                 "address_line1": settings.address_line1,
@@ -586,6 +596,7 @@ def void(actor: ActorRef, doc, reason):
             raise RuleError("only approved documents can be voided (delete a draft instead)")
         if d.kind == D.Kind.INVOICE and (_applied_total(d) > 0 or _credit_notes_total(d) > 0):
             raise RuleError("this invoice has payments or credits; issue a credit note instead of voiding")
+        _ensure_no_active_checkout(d)
         before = document_state(d)
         d.status, d.voided_at, d.void_reason = S.VOID, timezone.now(), reason
         d.save()
@@ -690,6 +701,7 @@ def _check_credit_note_amount(cn, total):
     inv = Document.objects.select_for_update().get(pk=cn.credit_for_id)
     if inv.status not in OPEN_INVOICE:
         raise RuleError("the invoice must be approved and not void")
+    _ensure_no_active_checkout(inv)
     if total > inv.total_cents - _credit_notes_total(inv):
         raise RuleError("credit is more than what's left on the invoice")
 
@@ -771,7 +783,7 @@ def badges(inv, on_date=None):
 
 def can_pay_online(inv):
     # Stripe can't charge under $0.50: below that the pay link is off and the page says "Contact us".
-    return inv.kind == D.Kind.INVOICE and inv.status in (S.SENT, S.PARTLY_PAID) and balance_cents(inv) >= STRIPE_MIN_CENTS and not inv.donated
+    return inv.kind == D.Kind.INVOICE and inv.status in (S.SENT, S.PARTLY_PAID) and balance_cents(inv) >= STRIPE_MIN_CENTS and not inv.donated and not inv.pay_link_disabled
 
 
 # --- payments -----------------------------------------------------------------
@@ -956,6 +968,12 @@ def update_settings(actor: ActorRef, **fields):
     return st
 
 
+def _ensure_no_active_checkout(invoice):
+    from .models import CheckoutAttempt
+    if CheckoutAttempt.objects.filter(invoice=invoice,status__in=['creating','open','processing']).exists():
+        raise RuleError("An online checkout is active. Close it or wait for bank confirmation before changing the balance.")
+
+
 def record_manual_payment(actor: ActorRef, invoice, method, amount_cents, received_on, check_number="", note="", email_receipt=True):
     require(actor, "record_manual_payment", "document", invoice.pk)
     if method not in (Payment.Method.CHECK, Payment.Method.CASH, Payment.Method.OTHER):
@@ -967,6 +985,7 @@ def record_manual_payment(actor: ActorRef, invoice, method, amount_cents, receiv
         inv = Document.objects.select_for_update().get(pk=invoice.pk)
         if inv.kind != D.Kind.INVOICE or inv.status not in OPEN_INVOICE:
             raise RuleError("payments can only be recorded on approved invoices")
+        _ensure_no_active_checkout(inv)
         return _apply_payment(inv, actor, method, amount_cents, received_on, email_receipt=email_receipt, check_number=check_number, note=note)
 
 
@@ -1064,7 +1083,7 @@ def record_stripe_refund(event_id, event_type, payload, payment_intent_id, refun
         return r
 
 
-def resolve_refund(actor: ActorRef, refund, resolution, now=None):
+def resolve_refund(actor: ActorRef, refund, resolution, now=None, credit_note=None, render_pdf=None):
     """Blake decides what a refund means: a credit note (nothing owed) or reopening the balance."""
     require(actor, "resolve_refund", "refund", refund.pk)
     if resolution not in (Refund.Resolution.CREDIT_NOTE, Refund.Resolution.REOPEN):
@@ -1076,13 +1095,16 @@ def resolve_refund(actor: ActorRef, refund, resolution, now=None):
         inv = Document.objects.select_for_update().get(pk=r.payment.invoice_id)
         r.resolution, r.resolved_at = resolution, timezone.now()
         if resolution == Refund.Resolution.CREDIT_NOTE:
+            if credit_note is None:
+                raise RuleError("Review a credit-note draft for the refunded work before resolving this refund.")
+            cn = Document.objects.select_for_update().filter(pk=credit_note.pk, kind=D.Kind.CREDIT_NOTE,
+                credit_for=inv, status=S.DRAFT, source="app").first()
+            if cn is None:
+                raise RuleError("Choose a draft credit note linked to this invoice.")
+            if preview_totals(cn)[0].total_cents != r.amount_cents:
+                raise RuleError("The reviewed credit total, including original-rate tax, must equal the refund.")
             r.save()
-            cn = create_credit_note_draft(
-                actor,
-                inv,
-                [{"description": f"Refund of online payment ({money.format_usd(r.amount_cents)})", "unit_cents": r.amount_cents, "taxable": False}],
-            )
-            cn = approve(actor, cn, now=now)
+            cn = approve(actor, cn, now=now, render_pdf=render_pdf)
             Refund.objects.filter(pk=r.pk).update(credit_note=cn)
         else:
             r.save()

@@ -147,3 +147,18 @@ EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_SSL = env_bool('EMAIL_USE_SSL', True)
 EMAIL_TIMEOUT = 20
 DEFAULT_FROM_EMAIL = 'Cosmically Creative <blake@cosmicallycreative.com>'
+
+# Private service endpoints remain closed until the supervised test install.
+CCB_PRIVATE_API_ENABLED = env_bool('CCB_PRIVATE_API_ENABLED', False)
+CCB_SERVICE_NETWORKS = env_list('CCB_SERVICE_NETWORKS', '127.0.0.1/32,::1/128')
+CCB_MCP_ALLOWED_ORIGINS = env_list('CCB_MCP_ALLOWED_ORIGINS', '')
+DATA_UPLOAD_MAX_MEMORY_SIZE = 512 * 1024
+
+# Hosted Checkout is developed without credentials; configure only at the test install.
+CCB_STRIPE_ENABLED = env_bool('CCB_STRIPE_ENABLED', False)
+CCB_STRIPE_ACCEPT_WEBHOOKS = env_bool('CCB_STRIPE_ACCEPT_WEBHOOKS', False)
+CCB_STRIPE_LIVEMODE = env_bool('CCB_STRIPE_LIVEMODE', False)
+CCB_STRIPE_LIVE_ENABLED = env_bool('CCB_STRIPE_LIVE_ENABLED', False)
+STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET', '')
+STRIPE_API_VERSION = '2026-10-28.endive'

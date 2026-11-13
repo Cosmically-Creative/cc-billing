@@ -307,11 +307,12 @@ def test_18_refund_needs_blakes_decision(blake, make_invoice, products, choice):
     inv.refresh_from_db()
     assert r.resolution == Refund.Resolution.PENDING
     assert inv.status == S.PAID and svc.balance_cents(inv) == 0  # nothing decided silently
-    svc.resolve_refund(blake, r, choice, now=central(2026, 12, 20))
+    reviewed_credit = svc.create_credit_note_draft(blake, inv, [dict(description="Sample refunded work", unit_cents=3738, taxable=True)]) if choice == "credit_note" else None
+    svc.resolve_refund(blake, r, choice, now=central(2026, 12, 20), credit_note=reviewed_credit)
     inv.refresh_from_db()
     if choice == "credit_note":
         cn = Document.objects.get(kind="credit_note", credit_for=inv)
-        assert cn.number == "CN-2026-0001" and cn.total_cents == 4000
+        assert cn.number == "CN-2026-0001" and cn.total_cents == 4000 and cn.tax_cents == 262
         assert svc.balance_cents(inv) == 0 and inv.status == S.PAID
     else:
         assert svc.balance_cents(inv) == 4000 and inv.status == S.PARTLY_PAID

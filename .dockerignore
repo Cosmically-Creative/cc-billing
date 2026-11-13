@@ -9,3 +9,8 @@ tests
 docs
 data
 media
+private
+*.key
+*.pem
+*.dump
+ledger-token*

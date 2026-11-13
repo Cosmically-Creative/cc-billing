@@ -20,6 +20,7 @@ urlpatterns = [
     path('documents/<str:kind>/', views.documents, name='documents'),
     path('payments/', views.payments, name='payments'),
     path('payments/new/', views.payment_new, name='new_payment'),
+    path('refunds/<int:pk>/resolve/', views.refund_resolve, name='resolve_refund'),
     path('receipts/<int:pk>/resend/', views.receipt_resend, name='resend_receipt'),
     path('settings/', views.settings_view, name='settings'),
     path('reports/tax/', views.tax_report, name='tax_report'),

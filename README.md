@@ -52,5 +52,9 @@ editor previews, tax reports, owner email compose/send, manual sending, and rece
 Local delivery tests use an in-memory mailbox; no live mail has been sent. See
 [the local phase review](docs/local-build-review.md) for validation and limitations.
 
-Next: Ledger API/private MCP integration, the public pay page and Stripe Checkout/webhook transport,
-deployment preparation, and the supervised test install. January features remain phased separately.
+Also implemented: private Ledger read/draft API and MCP compatibility transport, hosted Checkout
+with a public amount-selection page, signed webhooks, reservations and owner-reviewed refund resolution.
+Provider HTTP is replaced by local fakes in tests; no real sandbox session has been created yet.
+See [service API](docs/service-api.md), [Stripe transport](docs/stripe-transport.md) and
+[the supervised install checklist](docs/test-install-checklist.md). Next is the approved staging
+install and real sandbox/SMTP/offsite-restore acceptance. January features remain phased separately.

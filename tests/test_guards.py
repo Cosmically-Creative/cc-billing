@@ -57,7 +57,7 @@ def test_stripe_payment_needs_stripe_actor(blake, make_invoice, products):
         svc.record_manual_payment(blake, inv, "stripe", 100, dt.date(2026, 12, 11))
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db(transaction=True, serialized_rollback=True)
 def test_concurrent_approvals_get_distinct_numbers_without_gaps(customer, products, blake):
     drafts = [svc.create_draft(blake, "invoice", customer, [line(products["build"], 1000)]) for _ in range(6)]
     barrier = threading.Barrier(len(drafts))
