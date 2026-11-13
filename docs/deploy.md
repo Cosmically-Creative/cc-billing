@@ -1,4 +1,12 @@
-# Deploy notes (not deployed yet)
+# Deploy notes
+
+## Test install (2026-11-13, sample data only)
+- Commit `41fef71` copied with `git archive` to `/opt/billing` (no Git credentials on the server); `DEPLOYED_COMMIT` records it.
+- `.env` mode 600, generated on the server: secret key and DB password never left it. Email, Stripe, private API/MCP and live mode are off.
+- Caddy block appended to `/etc/caddy/Caddyfile` (backup in `/root/backups/Caddyfile.before-billing-*`). `/api*`, `/mcp*`, `/admin*` return 404 publicly.
+- Owner account `blake` created; authenticator is set up at first sign-in. Uptime Kuma monitor #16 on `/healthz`.
+- Still open before any real invoice: restricted runtime DB role, billing in the nightly offsite backup, Stripe test mode, SMTP, Ledger network.
+- Update: `git archive <commit> | ssh mainvps 'cd /opt/billing && tar -xf -'`, then `docker compose build app && docker compose up -d app`.
 
 Target: Main VPS, `/opt/billing`, Docker Compose, host Caddy → `127.0.0.1:3040`,
 `billing.cosmicallycreative.com`. The DNS record is added only once the app is running.
