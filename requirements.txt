@@ -5,6 +5,8 @@ argon2-cffi>=23
 pyotp>=2.9,<3
 qrcode>=8,<9
 gunicorn>=23,<24
+# Serves the bundled logo, Rubik fonts and editor script from the app itself.
+whitenoise>=6.9,<7
 # PDFs (needs Pango/HarfBuzz from the OS image)
 weasyprint>=66,<67
 # Time-zone data inside the app, so Central time never depends on the OS image.
