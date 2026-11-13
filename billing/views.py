@@ -18,7 +18,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from . import audit, delivery, money, pdf, services as svc
+from . import audit, delivery, money, pdf, services as svc, theme
 from .forms import CustomerForm, DraftForm, LineFormSet, PaymentForm, PeriodForm, SendForm, SettingsForm, TaxLocationForm, RefundResolutionForm
 from .models import AuditEvent, BusinessSettings, Customer, Document, LineItem, PaidCopy, Payment, Product, Receipt, Refund, RecurringTemplate, TaxLocationProposal
 from .permissions import ActorRef, BillingError
@@ -41,7 +41,7 @@ def ui(request, template, title, **context):
     links = [('home', 'Dashboard', {}), ('billing:documents', 'Quotes', {'kind': 'quote'}), ('billing:documents', 'Invoices', {'kind': 'invoice'}),
              ('billing:customers', 'Customers', {}), ('billing:payments', 'Payments', {}), ('billing:recurring', 'Recurring', {}), ('billing:settings', 'Settings', {})]
     nav = [dict(label=label, url=reverse(name, kwargs=kw), active=request.path == reverse(name, kwargs=kw)) for name, label, kw in links]
-    context.update(title=title, nav_items=nav)
+    context.update(title=title, nav_items=nav, theme=theme.current(request), theme_choices=theme.CHOICES)
     response = render(request, template, context)
     response['Cache-Control'] = 'no-store, private'
     response['Referrer-Policy'] = 'same-origin'
@@ -354,6 +354,12 @@ def settings_view(request):
         except BillingError as exc:
             form.add_error(None, str(exc))
     return ui(request, 'billing/settings.html', 'Settings', form=form)
+
+
+@owner
+@require_POST
+def set_theme(request):
+    return theme.set_theme(request)
 
 
 @owner

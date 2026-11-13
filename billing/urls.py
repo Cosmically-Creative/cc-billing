@@ -23,6 +23,7 @@ urlpatterns = [
     path('refunds/<int:pk>/resolve/', views.refund_resolve, name='resolve_refund'),
     path('receipts/<int:pk>/resend/', views.receipt_resend, name='resend_receipt'),
     path('settings/', views.settings_view, name='settings'),
+    path('settings/appearance/', views.set_theme, name='set_theme'),
     path('reports/tax/', views.tax_report, name='tax_report'),
     path('recurring/', views.recurring, name='recurring'),
 ]

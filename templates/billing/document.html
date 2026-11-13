@@ -1,7 +1,7 @@
 {% extends 'billing/app_base.html' %}{% load billing_ui %}
 {% block page_title %}{{ title }}{% endblock %}
 {% block page_actions %}{% if doc.is_draft %}<a class="button" href="{% url 'billing:edit_document' doc.pk %}">Edit draft</a>{% else %}<a class="button secondary" href="{% url 'billing:pdf' doc.pk %}">Download original PDF</a>{% if can_send %}<a class="button" href="{% url 'billing:send' doc.pk %}">Send email / mark sent</a>{% endif %}{% endif %}{% endblock %}
-{% block content %}<p>{% for badge in badges %}<span class="badge">{{ badge }}</span> {% endfor %}</p>
+{% block content %}<p>{% for badge in badges %}<span class="badge {{ badge|slugify }}">{{ badge }}</span> {% endfor %}</p>
 {% if not doc.is_draft %}<p class="card">Approved content is locked. Changes require a linked replacement or credit note.</p>{% endif %}
 <div class="detail-grid"><div><section class="card"><h2>Summary</h2><p><a href="{% url 'billing:customer' doc.customer_id %}">{{ doc.customer.name }}</a></p><p>Issued {{ doc.issue_date|default:'Not approved' }} · Due {{ doc.due_date|default:'—' }}</p>{% if doc.kind == 'invoice' and not doc.is_draft %}<p class="metric-value">{{ balance }} due</p>{% endif %}
 {% if doc.from_quote_id %}<p>From <a href="{% url 'billing:document' doc.from_quote_id %}">quote {{ doc.from_quote }}</a></p>{% endif %}{% if doc.replaces_id %}<p>Replaces <a href="{% url 'billing:document' doc.replaces_id %}">{{ doc.replaces }}</a></p>{% endif %}{% if doc.credit_for_id %}<p>Credit for <a href="{% url 'billing:document' doc.credit_for_id %}">{{ doc.credit_for }}</a></p>{% endif %}{% for replacement in doc.replaced_by.all %}<p>Replaced by <a href="{% url 'billing:document' replacement.pk %}">{{ replacement }}</a></p>{% endfor %}
