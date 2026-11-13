@@ -1,0 +1,16 @@
+Thank you for your payment.
+
+Invoice: {{ invoice_number }}
+Payment date: {{ payment_date|date:'M j, Y' }}
+Amount: {{ amount }}
+Method: {{ method }}
+Paid so far: {{ paid_so_far }}
+Balance: {{ balance }}
+{% if credit %}Customer credit: {{ credit }}
+{% endif %}{% if attach_paid_copy %}Your PAID invoice is attached.
+{% else %}View your invoice: {{ url }}
+{% endif %}
+{{ business.name }}
+{{ business.address_line1 }}
+{{ business.city_state_zip }}
+{{ business.phone }} · {{ business.email }}

@@ -884,39 +884,40 @@ def receipt_summary(receipt):
 
 
 def deliver_receipt(receipt, render_paid_copy, send_email, now=None):
-    """Email one receipt, exactly once. `render_paid_copy(copy) -> (path, sha256)` makes the stored
-    PAID copy the first time; `send_email(receipt, summary, paid_copy)` raises on failure.
-    A failure is recorded for Blake and never touches the payment."""
+    """Claim once before transport. Interrupted sends stay unconfirmed, never auto-retried.
+
+    Payment facts are already committed. A transport failure cannot roll them back.
+    """
     with transaction.atomic():
         r = Receipt.objects.select_for_update().get(pk=receipt.pk)
         if r.email_status != Receipt.EmailStatus.PENDING:
             return r
         r.attempts += 1
-        copy = None
-        try:
-            if not r.recipients:
-                raise RuntimeError("the client has no email address")
-            if r.paid_copy_id:
+        r.email_status = Receipt.EmailStatus.SENDING
+        r.save(update_fields=["email_status", "attempts"])
+    copy = None
+    try:
+        if not r.recipients:
+            raise RuntimeError("the client has no email address")
+        if r.paid_copy_id:
+            with transaction.atomic():
                 copy = PaidCopy.objects.select_for_update().get(pk=r.paid_copy_id)
                 if not copy.pdf_file:
                     copy.pdf_file, copy.pdf_sha256 = render_paid_copy(copy)
                     copy.save(update_fields=["pdf_file", "pdf_sha256"])
-            send_email(r, receipt_summary(r), copy)
-        except Exception as e:
+        send_email(r, receipt_summary(r), copy)
+    except Exception as e:
+        with transaction.atomic():
             r.email_status, r.last_error = Receipt.EmailStatus.FAILED, str(e)[:300]
-            r.save(update_fields=["email_status", "last_error", "attempts"])
+            r.save(update_fields=["email_status", "last_error"])
             audit.record(ActorRef(Actor.SYSTEM), "receipt_failed", "document", r.payment.invoice_id, after={"receipt_id": r.pk}, note=r.last_error)
-            return r
-        r.email_status, r.sent_at, r.last_error = Receipt.EmailStatus.SENT, now or timezone.now(), ""
-        r.save(update_fields=["email_status", "sent_at", "last_error", "attempts"])
-        audit.record(
-            ActorRef(Actor.SYSTEM),
-            "receipt_sent",
-            "document",
-            r.payment.invoice_id,
-            after={"receipt_id": r.pk, "payment_id": r.payment_id, "to": r.recipients, "paid_copy_id": r.paid_copy_id},
-        )
         return r
+    with transaction.atomic():
+        r.email_status, r.sent_at, r.last_error = Receipt.EmailStatus.SENT, now or timezone.now(), ""
+        r.save(update_fields=["email_status", "sent_at", "last_error"])
+        audit.record(ActorRef(Actor.SYSTEM), "receipt_sent", "document", r.payment.invoice_id,
+                     after={"receipt_id": r.pk, "payment_id": r.payment_id, "to": r.recipients, "paid_copy_id": r.paid_copy_id})
+    return r
 
 
 def resend_receipt(actor: ActorRef, receipt, render_paid_copy, send_email):
@@ -924,8 +925,8 @@ def resend_receipt(actor: ActorRef, receipt, render_paid_copy, send_email):
     require(actor, "resend_receipt", "receipt", receipt.pk)
     with transaction.atomic():
         r = Receipt.objects.select_for_update().get(pk=receipt.pk)
-        if r.email_status == Receipt.EmailStatus.PENDING:
-            raise RuleError("this receipt is already waiting to be sent")
+        if r.email_status in (Receipt.EmailStatus.PENDING, Receipt.EmailStatus.SENDING):
+            raise RuleError("this receipt is waiting to send or its delivery is unconfirmed; review the mailbox first")
         Receipt.objects.filter(pk=r.pk).update(email_status=Receipt.EmailStatus.PENDING)
         audit.record(actor, "receipt_resend", "document", r.payment.invoice_id, after={"receipt_id": r.pk})
     return deliver_receipt(r, render_paid_copy, send_email)

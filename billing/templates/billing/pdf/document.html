@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ kind_label }} {{ number }}</title>
+<style>
+
+/* ---------- Fonts ---------- */
+
+@font-face {
+  font-family: "Rubik";
+  src: url("{{ fonts_dir }}/rubik-latin-400-normal.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Rubik";
+  src: url("{{ fonts_dir }}/rubik-latin-500-normal.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Rubik";
+  src: url("{{ fonts_dir }}/rubik-latin-600-normal.woff") format("woff");
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* ---------- Page ---------- */
+
+@page {
+  size: Letter;
+  margin: 0.5in 0.5in 0.8in 0.5in;
+  @top-right { content: element(short-header); }
+
+  @bottom-left {
+    content: element(document-footer);
+    font-family: Rubik, sans-serif;
+    font-size: 10px;
+    font-weight: 400;
+    color: #8A93A8;
+    vertical-align: bottom;
+  }
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font-family: Rubik, sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    color: #8A93A8;
+    vertical-align: bottom;
+  }
+}
+
+@page:first { @top-right { content: none; } }
+.short-header { position: running(short-header); font-size: 11px; color: #5A6478; }
+.document-footer { position: running(document-footer); font-size: 8px; }
+@page { @bottom-center { vertical-align: top; font: 11px Rubik; color: #0B1532; } }
+/* ---------- Base ---------- */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Rubik, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #0B1532;
+}
+
+/* ---------- Header ---------- */
+
+.top { position: relative; }
+
+.head { display: flex; align-items: flex-start; padding: 16px 0 12px; }
+.logo { width: 160px; }
+.head-right { margin-left: auto; text-align: right; }
+.kind-label { font-size: 12px; font-weight: 600; color: #2D54C7; }
+.doc-number { font-size: 26px; font-weight: 600; color: #0B1532; line-height: 1.15; }
+.head-contact { font-size: 11px; color: #5A6478; margin-top: 6px; }
+
+.rule-blue { height: 4px; background: #2D54C7; }
+.rule-yellow { height: 4px; background: #FFE642; }
+
+/* ---------- From / Bill to / Meta ---------- */
+
+.parties { display: flex; margin-top: 32px; }
+
+.mini-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #5A6478;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+}
+
+.from { width: 32%; margin-top: 8px; }
+.bill-to { width: 32%; margin-top: 8px; }
+.party-line { font-size: 12px; color: #0B1532; }
+
+.meta-box {
+  width: 34%;
+  margin-left: auto;
+  background: #F7F8FB;
+  border: 1px solid #E4E8F0;
+  border-radius: 6px;
+  padding: 8px 14px;
+}
+.meta-row { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.meta-row-first { margin-top: 0; }
+.meta-label { color: #5A6478; }
+.meta-value { font-weight: 500; color: #0B1532; text-align: right; }
+
+/* ---------- Stamp ---------- */
+
+.stamp {
+  position: relative;
+  display: inline-block;
+  margin: 22px 14px 12px;
+  transform: rotate(-12deg);
+  opacity: 0.9;
+  background: transparent;
+  border: 3px solid currentColor;
+  border-radius: 8px;
+  padding: 8px 14px;
+  text-align: center;
+  letter-spacing: 1px;
+  color: #2F6B0A;
+}
+.stamp-void { color: #A11A1A; }
+.stamp-kind { font-size: 28px; font-weight: 600; line-height: 1.1; letter-spacing: 4px; }
+.stamp-date { font-size: 11px; margin-top: 2px; }
+.stamp-line { font-size: 11px; }
+
+/* ---------- Line items ---------- */
+
+.lines {
+  width: 100%;
+  margin-top: 28px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+
+.col-desc { width: 48%; }
+.col-qty { width: 8%; }
+.col-rate { width: 15%; }
+.col-tax { width: 8%; }
+.col-amount { width: 21%; }
+
+.lines th {
+  background: #E6EEFF;
+  color: #1F3A89;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 8px 12px;
+}
+.lines th:first-child { border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
+.lines th:last-child { border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+
+.lines th:nth-child(2),
+.lines td:nth-child(2) { text-align: right; }
+.lines th:nth-child(3),
+.lines td:nth-child(3) { text-align: right; }
+.lines th:nth-child(4),
+.lines td:nth-child(4) { text-align: center; }
+.lines th:nth-child(5),
+.lines td:nth-child(5) { text-align: right; }
+
+.lines td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #E4E8F0;
+  font-size: 12px;
+  vertical-align: top;
+}
+.desc { font-weight: 500; overflow-wrap: anywhere; }
+.line-detail { font-size: 11px; color: #5A6478; margin-top: 2px; }
+.tax-yes { font-weight: 600; color: #0B1532; }
+.tax-no { color: #8A93A8; }
+.amount { font-weight: 500; }
+
+tr.line.has-discount td { border-bottom: none; }
+tr.discount td {
+  font-size: 11px;
+  color: #5A6478;
+  border-bottom: 1px solid #E4E8F0;
+  padding-top: 0;
+}
+.discount-label-cell { padding-left: 28px; }
+.discount-amount { font-weight: 400; }
+
+/* ---------- Footnote + totals ---------- */
+
+.closing { break-inside: avoid; }
+.after-table { display: flex; align-items: flex-start; margin-top: 14px; break-inside: avoid; }
+.tax-note { width: 42%; font-size: 10px; color: #5A6478; }
+
+.totals { width: 288px; margin-left: auto; }
+.donated { font-size: 12px; font-weight: 600; color: #2D54C7; text-align: right; margin-bottom: 4px; }
+.t-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 4px; font-size: 12px; }
+.t-row-first { margin-top: 0; }
+.t-label { color: #5A6478; }
+.t-value { color: #0B1532; text-align: right; }
+.tax-split { font-size: 10px; color: #8A93A8; text-align: right; margin-top: 2px; }
+.t-rule { border-top: 1px solid #CDD3DF; margin: 7px 0 3px; }
+.t-total { font-size: 13px; font-weight: 600; margin-top: 4px; }
+.t-total .t-label { color: #0B1532; }
+.paid-detail { display: block; font-size: 10px; color: #8A93A8; }
+
+/* ---------- Balance due ---------- */
+
+.balance-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 292px;
+  margin-left: auto;
+  margin-top: 14px;
+  background: #E6EEFF;
+  border: 1.5px solid #2D54C7;
+  border-radius: 6px;
+  padding: 9px 14px;
+  break-inside: avoid;
+}
+.balance-label { font-size: 11px; font-weight: 600; color: #1F3A89; text-transform: uppercase; letter-spacing: 0.6px; }
+.balance-value { font-size: 18px; font-weight: 600; color: #0B1532; }
+
+/* ---------- Applied to (credit notes) ---------- */
+
+.applied-box {
+  width: 292px;
+  margin-left: auto;
+  margin-top: 14px;
+  background: #F7F8FB;
+  border: 1px solid #E4E8F0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  break-inside: avoid;
+}
+.applied-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: #5A6478;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 2px;
+}
+
+/* ---------- Pay online ---------- */
+
+.pay-box {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 20px;
+  background: #FFFFFF;
+  border: 1px solid #2D54C7;
+  border-left: 6px solid #2D54C7;
+  border-radius: 8px;
+  padding: 12px 16px;
+  break-inside: avoid;
+}
+.pay-title { font-size: 16px; font-weight: 600; }
+.pay-desc { font-size: 12px; color: #5A6478; margin-top: 4px; }
+.pay-link { margin-top: 8px; }
+.pay-link a { font-size: 14px; font-weight: 600; color: #2D54C7; text-decoration: none; }
+.pay-hint { font-size: 11px; color: #8A93A8; margin-top: 4px; }
+.pay-qr { width: 100px; height: 100px; margin-left: auto; flex-shrink: 0; }
+.pay-qr svg { display: block; width: 100px; height: 100px; }
+
+/* ---------- Check / notes / late fee ---------- */
+
+.bottom-row { display: flex; align-items: flex-start; margin-top: 24px; break-inside: avoid; }
+.check-col { width: 46%; }
+.notes-col { width: 50%; margin-left: auto; }
+.col-text { font-size: 11px; color: #0B1532; margin-top: 2px; }
+.late-fee { font-size: 10px; color: #8A93A8; margin-top: 12px; }
+
+</style>
+</head>
+<body>
+<div class="short-header">{{ kind_label }} {{ number }} · continued</div>
+<div class="document-footer">{{ footer_left }}</div>
+
+<div class="top">
+
+  <div class="head">
+    <img class="logo" src="{{ logo_uri }}" alt="">
+    <div class="head-right">
+      <div class="kind-label">{{ kind_label }}</div>
+      <div class="doc-number">{{ number }}</div>
+      <div class="head-contact">{{ business.email }} · {{ business.phone }}</div>
+    </div>
+  </div>
+
+  <div class="rule-blue"></div>
+  <div class="rule-yellow"></div>
+
+  <div class="parties">
+    <div class="from">
+      <div class="mini-label">From</div>
+      <div class="party-line">{{ business.name }}</div>
+      <div class="party-line">{{ business.address_line1 }}</div>
+      <div class="party-line">{{ business.city_state_zip }}</div>
+      <div class="party-line">{{ business.email }}</div>
+      <div class="party-line">{{ business.phone }}</div>
+    </div>
+    <div class="bill-to">
+      <div class="mini-label">Bill to</div>
+      {% for line in bill_to %}<div class="party-line">{{ line }}</div>{% endfor %}
+    </div>
+    <div class="meta-box">
+      {% for row in meta %}
+      <div class="meta-row{% if forloop.first %} meta-row-first{% endif %}">
+        <span class="meta-label">{{ row.label }}</span>
+        <span class="meta-value">{{ row.value }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if stamp %}
+  <div class="stamp{% if stamp.kind == 'VOID' %} stamp-void{% endif %}">
+    <div class="stamp-kind">{{ stamp.kind }}</div>
+    <div class="stamp-date">{{ stamp.date }}</div>
+    {% for line in stamp.lines %}<div class="stamp-line">{{ line }}</div>{% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+
+<table class="lines">
+  <colgroup>
+    <col class="col-desc">
+    <col class="col-qty">
+    <col class="col-rate">
+    <col class="col-tax">
+    <col class="col-amount">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Description</th>
+      <th>Qty</th>
+      <th>Rate</th>
+      <th>Tax</th>
+      <th>Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for line in lines %}
+    <tr data-subtotal="{{ line.running_subtotal }}" class="line{% if line.discount %} has-discount{% endif %}">
+      <td>
+        <div class="desc">{{ line.description }}</div>
+        {% if line.detail %}<div class="line-detail">{{ line.detail }}</div>{% endif %}
+      </td>
+      <td>{{ line.qty }}</td>
+      <td>{{ line.rate }}</td>
+      <td>{% if line.tax_mark == 'T' %}<span class="tax-yes">{{ line.tax_mark }}</span>{% else %}<span class="tax-no">{{ line.tax_mark }}</span>{% endif %}</td>
+      <td class="amount">{{ line.amount }}</td>
+    </tr>
+    {% if line.discount %}
+    <tr data-subtotal="{{ line.running_subtotal }}" class="discount">
+      <td class="discount-label-cell">{{ line.discount.label }}</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td class="discount-amount">{{ line.discount.amount }}</td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="closing">
+<div class="after-table">
+  <div class="tax-note">T = taxable: Iowa 6% state tax plus the local tax where the client is. Hosting, domains and platform renewals are not taxed.</div>
+
+  <div class="totals">
+    {% if donated %}
+    <div class="donated">Donated: value of work {{ donated.value }}</div>
+    {% endif %}
+
+    <div class="t-row t-row-first">
+      <span class="t-label">Subtotal</span>
+      <span class="t-value">{{ totals.subtotal }}</span>
+    </div>
+
+    {% if totals.discount %}
+    <div class="t-row">
+      <span class="t-label">Discount</span>
+      <span class="t-value">{{ totals.discount }}</span>
+    </div>
+    {% endif %}
+
+    {% if totals.show_tax %}
+    <div class="t-row">
+      <span class="t-label">Taxable amount</span>
+      <span class="t-value">{{ totals.taxable }}</span>
+    </div>
+    <div class="t-row">
+      <span class="t-label">{% if out_of_state %}No Iowa sales tax (out of state){% else %}{{ totals.tax_label }}{% endif %}</span>
+      <span class="t-value">{{ totals.tax }}</span>
+    </div>
+    {% if totals.tax_split %}
+    <div class="tax-split">{{ totals.tax_split }}</div>
+    {% endif %}
+    {% endif %}
+
+    <div class="t-rule"></div>
+
+    <div class="t-row t-total">
+      <span class="t-label">Total</span>
+      <span class="t-value">{{ totals.total }}</span>
+    </div>
+
+    {% for p in totals.payments %}
+    <div class="t-row">
+      <span class="t-label">Amount paid{% if p.detail %}<span class="paid-detail">{{ p.detail }}</span>{% endif %}</span>
+      <span class="t-value">{{ p.amount }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% if applied_to %}
+<div class="applied-box">
+  <div class="applied-title">Applied to</div>
+  <div class="t-row t-row-first">
+    <span class="t-label">Invoice {{ applied_to.invoice }}</span>
+    <span class="t-value"></span>
+  </div>
+  <div class="t-row">
+    <span class="t-label">Invoice total</span>
+    <span class="t-value">{{ applied_to.invoice_total }}</span>
+  </div>
+  <div class="t-row">
+    <span class="t-label">This credit</span>
+    <span class="t-value">{{ applied_to.credit }}</span>
+  </div>
+  <div class="t-row">
+    <span class="t-label">Remaining</span>
+    <span class="t-value">{{ applied_to.remaining }}</span>
+  </div>
+</div>
+{% endif %}
+
+{% if totals.show_balance %}
+<div class="balance-box">
+  <span class="balance-label">Balance due</span>
+  <span class="balance-value">{{ totals.balance_due }}</span>
+</div>
+{% endif %}
+
+{% if kind == 'quote' %}
+<div class="pay-box"><div><div class="pay-title">Accept this quote</div>
+<div class="pay-desc">Reply to {{ business.email }} to accept this quote or discuss changes.</div></div></div>
+{% endif %}
+{% if pay.show %}
+<div class="pay-box">
+  <div class="pay-info">
+    <div class="pay-title">Pay online</div>
+    <div class="pay-desc">Pay all or part of the balance by card or bank transfer (ACH), securely through Stripe.</div>
+    <div class="pay-link"><a href="{{ pay.url }}">{{ pay.url_text }}</a></div>
+    <div class="pay-hint">Type the link, or scan the code.</div>
+  </div>
+  <div class="pay-qr">{{ pay.qr_svg|safe }}</div>
+</div>
+{% endif %}
+
+{% if check_text or notes %}
+<div class="bottom-row">
+  {% if check_text %}
+  <div class="check-col">
+    <div class="mini-label">Pay by check</div>
+    <div class="col-text">{{ check_text }}</div>
+  </div>
+  {% endif %}
+  {% if notes %}
+  <div class="notes-col">
+    <div class="mini-label">Notes</div>
+    <div class="col-text">{{ notes|linebreaksbr }}</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if late_fee_text %}
+<div class="late-fee">{{ late_fee_text }}</div>
+{% endif %}
+
+</div>
+</body>
+</html>

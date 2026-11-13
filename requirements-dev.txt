@@ -1,3 +1,5 @@
 -r requirements.txt
 pytest>=8
 pytest-django>=4.9
+# Inspect rendered PDFs for pagination and clipping regressions.
+PyMuPDF>=1.26,<2

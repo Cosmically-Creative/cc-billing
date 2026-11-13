@@ -3,7 +3,7 @@
 Quoting and invoicing for Cosmically Creative: quotes → invoices → credit notes, Iowa sales tax,
 check/cash and Stripe payments, and a permanent change history. Private; all rights reserved.
 
-Stack: Python 3.13 · Django 5.2 LTS · PostgreSQL 18 · (WeasyPrint for PDFs, coming) · Docker Compose.
+Stack: Python 3.13 · Django 5.2 LTS · PostgreSQL 18 · WeasyPrint for PDFs · Docker Compose.
 
 ## Billing rules the code enforces
 
@@ -47,7 +47,10 @@ Then open http://127.0.0.1:3040/account/login/. The first sign-in shows a QR cod
 
 ## Status
 
-Built so far: data model, billing rules, database guards, change history, sign-in, Ledger token model,
-receipts (one per payment; the paid-in-full receipt attaches a stored PAID-stamped copy),
-sales tax by client location (Iowa state + local option, stored separately per line) and the tax report.
-Next: screens from Prism's Penpot design, PDFs, email sending, the Ledger API + MCP layer, Stripe.
+Implemented: billing rules/database guards, sign-in, owner screens, stored PDFs, server-calculated
+editor previews, tax reports, owner email compose/send, manual sending, and receipt delivery.
+Local delivery tests use an in-memory mailbox; no live mail has been sent. See
+[the local phase review](docs/local-build-review.md) for validation and limitations.
+
+Next: Ledger API/private MCP integration, the public pay page and Stripe Checkout/webhook transport,
+deployment preparation, and the supervised test install. January features remain phased separately.

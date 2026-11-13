@@ -510,6 +510,7 @@ class Receipt(models.Model):
 
     class EmailStatus(models.TextChoices):
         PENDING = "pending", "Waiting to send"
+        SENDING = "sending", "Sending / outcome unconfirmed"
         SENT = "sent", "Sent"
         FAILED = "failed", "Failed"
         NOT_SENT = "not_sent", "Not sent (Blake unticked it)"
@@ -526,3 +527,20 @@ class Receipt(models.Model):
     last_error = models.CharField(max_length=300, blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class DocumentEmail(models.Model):
+    """Durable send claim. A reused form submission can never submit the same email twice.
+
+    A process lost during SMTP stays 'sending', requiring owner investigation, never auto-retry.
+    """
+    request_id = models.UUIDField(unique=True)
+    document = models.ForeignKey(Document, on_delete=models.PROTECT, related_name='emails')
+    recipients = models.JSONField()
+    subject = models.CharField(max_length=200)
+    body = models.TextField()
+    pdf_sha256 = models.CharField(max_length=64)
+    status = models.CharField(max_length=12, default='sending', choices=[('sending', 'Sending / outcome unconfirmed'), ('sent', 'Sent'), ('failed', 'Failed')])
+    last_error = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)

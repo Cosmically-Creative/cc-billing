@@ -10,11 +10,14 @@ PAID copy once when the balance reaches $0 (services.deliver_receipt). Both are 
 
 import hashlib
 import io
+import secrets
+from urllib.parse import urlparse, unquote
 from pathlib import Path
 
 import qrcode
 import qrcode.image.svg
 from django.conf import settings
+from django.utils import timezone
 from django.template.loader import render_to_string
 
 from . import money
@@ -43,7 +46,7 @@ def fmt_qty(qty_milli):
 
 
 def qr_svg(text):
-    img = qrcode.make(text, image_factory=qrcode.image.svg.SvgPathImage, box_size=10, border=0)
+    img = qrcode.make(text, image_factory=qrcode.image.svg.SvgPathImage, box_size=10, border=4)
     buf = io.BytesIO()
     img.save(buf)
     return buf.getvalue().decode()
@@ -64,9 +67,12 @@ def document_context(doc, *, stamp=None, paid_copy=None, payments=None, replacem
     usd = lambda c: money.format_usd(sign * c)  # noqa: E731
 
     lines = []
+    running = 0
     for li in doc.lines.all():
+        running += li.line_cents
         lines.append(
             {
+                "running_subtotal": usd(running),
                 "description": li.description,
                 "detail": "",
                 "qty": fmt_qty(li.qty_milli),
@@ -115,7 +121,18 @@ def document_context(doc, *, stamp=None, paid_copy=None, payments=None, replacem
                 detail += f" #{p.check_number}"
             paid_rows.append({"detail": f"{detail}, {fmt_date(p.received_on)}", "amount": money.format_usd(-p.applied_cents)})
 
-    balance = 0 if stamp else max(doc.total_cents - paid_cents, 0)
+    if paid_copy is not None:
+        paid_rows = [{"detail": f"{i.get('method', i['type']).replace('_', ' ').title()}, {i['date']}",
+                      "amount": money.format_usd(-i['amount_cents'])} for i in paid_copy.applied]
+    if doc.kind == D.Kind.INVOICE and doc.pk and paid_copy is None:
+        for credit in doc.credit_notes.exclude(status__in=[S.DRAFT, S.VOID]).order_by("pk"):
+            paid_rows.append({"detail": f"Credit note {credit.number}", "amount": money.format_usd(-credit.total_cents)})
+        from .models import Refund
+        for refund in Refund.objects.filter(payment__invoice=doc).exclude(resolution=Refund.Resolution.PENDING).order_by("pk"):
+            paid_rows.append({"detail": "Refund", "amount": money.format_usd(refund.amount_cents)})
+    # Stored approval PDFs are created before the document row changes from draft.
+    from .services import balance_cents
+    balance = 0 if stamp else (max(balance_cents(doc), 0) if doc.pk and not doc.is_draft else max(doc.total_cents - paid_cents, 0))
     pay_url = f"{base_url()}/pay/{doc.pay_code}" if doc.pay_code else ""
     show_pay = (
         doc.kind == D.Kind.INVOICE
@@ -137,7 +154,7 @@ def document_context(doc, *, stamp=None, paid_copy=None, payments=None, replacem
     elif stamp == "void":
         stamp_ctx = {
             "kind": "VOID",
-            "date": fmt_date(doc.voided_at.date()) if doc.voided_at else "",
+            "date": fmt_date(timezone.localdate(doc.voided_at)) if doc.voided_at else "",
             "lines": [f"Replaced by {replacement.number}"] if replacement and replacement.number else [],
         }
 
@@ -196,18 +213,44 @@ def render_html(ctx):
     return render_to_string("billing/pdf/document.html", ctx)
 
 
-def render_pdf_bytes(ctx):
-    from weasyprint import HTML  # imported lazily: heavy, and not needed by most requests
+def asset_fetcher(url):
+    """PDF templates can fetch only the bundled logo and fonts; never network URLs."""
+    from weasyprint import default_url_fetcher
+    parsed = urlparse(url)
+    path = Path(unquote(parsed.path)).resolve()
+    if parsed.scheme != "file" or parsed.netloc or not path.is_relative_to(STATIC.resolve()):
+        raise ValueError("PDF asset is outside bundled assets")
+    return default_url_fetcher(url)
 
-    return HTML(string=render_html(ctx), base_url=str(STATIC)).write_pdf()
+
+def render_pdf_bytes(ctx):
+    from weasyprint import HTML, CSS
+    html = HTML(string=render_html(ctx), base_url=str(STATIC), url_fetcher=asset_fetcher)
+    first = html.render()
+    rules = []
+    # Read actual laid-out rows, so long/wrapped descriptions and discounts paginate naturally.
+    # Only non-final pages get a subtotal; totals/payment instructions stay at the document end.
+    for index, page in enumerate(first.pages[:-1], 1):
+        subtotal = None
+        for box in page._page_box.descendants():
+            if type(box).__name__ == "TableRowBox" and box.element is not None:
+                subtotal = box.element.get("data-subtotal") or subtotal
+        if subtotal:
+            rules.append('@page :nth(%d) { @bottom-center { content: "Subtotal so far: %s"; } }' % (index, subtotal))
+    return html.write_pdf(stylesheets=[CSS(string="\n".join(rules))]) if rules else first.write_pdf()
 
 
 def _store(relpath, data):
+    # Unique immutable file per render: a failed approval can leave an orphan, but never
+    # prevents retrying the same gapless invoice number. No existing file is overwritten.
+    rel = Path(relpath)
+    relpath = str(rel.with_name(f"{rel.stem}-{secrets.token_hex(8)}{rel.suffix}"))
     path = Path(settings.MEDIA_ROOT) / relpath
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         raise FileExistsError(f"{relpath} already exists; stored PDFs are never overwritten")
-    path.write_bytes(data)
+    with path.open("xb") as stream:
+        stream.write(data)
     return relpath, hashlib.sha256(data).hexdigest()
 
 

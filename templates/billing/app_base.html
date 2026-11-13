@@ -1,0 +1,337 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ title }} · Cosmically Creative Billing{% endblock %}</title>
+  <style>
+    /* Billing app shell — brand tokens from docs/pdf-design.md (colors only, not the PDF page layout). */
+    :root {
+      --cc-blue: #2D54C7;
+      --cc-blue-dark: #1F3A89;
+      --cc-blue-50: #E6EEFF;
+      --cc-yellow: #FFE642;
+      --cc-navy: #0B1532;
+      --cc-text-secondary: #5A6478;
+      --cc-neutral-400: #8A93A8;
+      --cc-neutral-25: #F7F8FB;
+      --cc-border: #E4E8F0;
+      --cc-border-strong: #CDD3DF;
+      /* Rubik assets live in static/billing/fonts; the family name is used directly. */
+      --cc-font: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --cc-sidebar-width: 232px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--cc-font);
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--cc-navy);
+      background: var(--cc-neutral-25);
+    }
+
+    /* Skip link: visible only when focused. */
+    .skip-link {
+      position: absolute;
+      left: -100vw;
+      top: 0;
+      z-index: 100;
+      padding: 0.75rem 1.25rem;
+      background: var(--cc-blue-50);
+      color: var(--cc-blue-dark);
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 0 0 8px 0;
+    }
+    .skip-link:focus { left: 0; }
+
+    /* Keyboard-visible focus everywhere. */
+    a:focus-visible,
+    button:focus-visible {
+      outline: 3px solid var(--cc-yellow);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* Layout: navy sidebar + main content. */
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .app-sidebar {
+      flex: 0 0 var(--cc-sidebar-width);
+      width: var(--cc-sidebar-width);
+      background: #fff;
+      color: var(--cc-navy);
+      border-right:1px solid var(--cc-border);
+      padding: 1.5rem 0;
+    }
+
+    .app-sidebar .brand {
+      display: block;
+      padding: 0 24px 20px;
+      border-bottom: 0;
+      margin-bottom: 0.75rem;
+    }
+
+    .app-sidebar .brand img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      width: 120px;
+    }
+
+    /* Blue + yellow brand rules under the logo, echoing the document accent. */
+    .app-sidebar .brand-rules {
+      display:none;
+      height: 4px;
+      margin: 1rem 1.25rem 0;
+      background: linear-gradient(to bottom, var(--cc-blue) 50%, var(--cc-yellow) 50%);
+    }
+
+    .app-nav ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .app-nav a {
+      display: block;
+      padding: 10px 20px;
+      margin:0 12px 4px;
+      border-radius:7px;
+      color: var(--cc-navy);
+      text-decoration: none;
+      font-weight: 500;
+      border-left: 3px solid transparent;
+    }
+
+    .app-nav a:hover {
+      color: var(--cc-blue-dark);
+      background: var(--cc-blue-50);
+    }
+
+    .app-nav a[aria-current="page"] {
+      color: var(--cc-blue-dark);
+      background: var(--cc-blue-50);
+      border-left-color: var(--cc-blue);
+    }
+
+    .app-main {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page-header {
+      padding: 24px 32px 16px;
+      background: var(--cc-neutral-25);
+      border-bottom: 0;
+    }
+
+    .page-header-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem 1rem;
+    }
+
+    .page-header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+      flex: 1 1 auto;
+      min-width: 0;
+      word-break: break-word;
+    }
+
+    .page-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .page-actions:empty { display: none; }
+
+    .page-content {
+      padding: 12px 32px 40px;
+      flex: 1 1 auto;
+    }
+
+    /* Django messages. */
+    .messages {
+      list-style: none;
+      margin: 0 0 1.25rem;
+      padding: 0;
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .messages li {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--cc-border);
+      background: #fff;
+    }
+
+    .messages li.success { background: var(--cc-blue-50); border-color: var(--cc-blue); }
+    .messages li.warning { border-color: var(--cc-yellow); }
+    .messages li.error   { border-color: #B4232A; }
+
+    a { color: var(--cc-blue); }
+    a:hover { color: var(--cc-blue-dark); }
+
+    /* Narrow screens: sidebar stacks on top as a header bar. */
+    @media (max-width: 720px) {
+      .app { flex-direction: column; }
+
+      .app-sidebar {
+        width: 100%;
+        flex: 0 0 auto;
+        padding: 1rem 0 0;
+      }
+
+      .app-sidebar .brand {
+        padding: 0 1rem 1rem;
+        border-bottom: 0;
+        margin-bottom: 0;
+      }
+
+      .app-sidebar .brand img { width: 6.5rem; }
+
+      .app-sidebar .brand-rules { margin: 0 1rem; }
+
+      .app-nav ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        padding: 0.75rem 1rem;
+      }
+
+      .app-nav a {
+        padding: 0.4rem 0.75rem;
+        border-left: 0;
+        border-radius: 6px;
+      }
+
+      .app-nav a[aria-current="page"] {
+        border-left: 0;
+        outline: 2px solid var(--cc-yellow);
+        outline-offset: -2px;
+      }
+
+      .page-header { padding: 1rem; }
+      .page-content { padding: 1rem 1rem 2rem; }
+    }
+    @font-face { font-family: Rubik; src: url("{% static 'billing/fonts/rubik-latin-400-normal.woff' %}"); font-weight:400; }
+    @font-face { font-family: Rubik; src: url("{% static 'billing/fonts/rubik-latin-500-normal.woff' %}"); font-weight:500; }
+    @font-face { font-family: Rubik; src: url("{% static 'billing/fonts/rubik-latin-600-normal.woff' %}"); font-weight:600; }
+    @font-face { font-family: Rubik; src: url("{% static 'billing/fonts/rubik-latin-600-normal.woff' %}"); font-weight:600; }
+    .card { background:#fff; border:1px solid var(--cc-border); border-radius:8px; padding:24px; margin-bottom:24px; min-width:0; }
+    .card h2 { font-size:16px; font-weight:600; margin:0 0 16px; }
+    .card h3 { font-size:14px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:24px; }
+    .detail-grid > * { min-width:0; }
+    .detail-grid { display:grid; grid-template-columns:minmax(0,2fr) minmax(280px,1fr); gap:24px; align-items:start; }
+    .metrics .card { border-top:3px solid var(--cc-blue); }
+    .metrics .card:nth-child(2) { border-top-color:#A11A1A; }
+    .metrics .card:nth-child(2) .metric-value { color:#A11A1A; }
+    .metrics .card:nth-child(3) { border-top-color:#2F6B0A; }
+    .dashboard-grid { display:grid; grid-template-columns:minmax(0,2fr) minmax(280px,1fr); gap:24px; }
+    .metric .metric-label { margin:0; }
+    .metric .metric-detail { margin:4px 0 0; }
+    .metric.card { padding:20px 24px; }
+    .page-subtitle { margin:4px 0 0; color:var(--cc-text-secondary); font-size:13px; }
+    .coming-up td { padding:10px 0; }
+    .coming-up td:first-child { white-space:nowrap; padding-right:12px; }
+    .metric-value { font-size:32px; font-weight:600; margin:8px 0; }
+    .metric-label { text-transform:uppercase; font-size:11px; letter-spacing:.06em; }
+    .muted { color:var(--cc-text-secondary); }
+    .button { display:inline-block; font:500 13px Rubik,sans-serif; padding:10px 14px; background:var(--cc-blue); border:1px solid var(--cc-blue); border-radius:6px; color:#fff; cursor:pointer; text-decoration:none; margin:4px 4px 4px 0; }
+    a.button:hover { color:#fff; background:var(--cc-blue-dark); }
+    .button.secondary { background:#fff; color:var(--cc-blue); border-color:var(--cc-border-strong); }
+    .danger { background:#A11A1A; border-color:#A11A1A; }
+    .badge { display:inline-block; border-radius:5px; background:var(--cc-blue-50); color:var(--cc-blue-dark); padding:4px 8px; font-size:12px; text-decoration:none; }
+    .badge.overdue { background:#FFE6E6; color:#A11A1A; }
+    .badge.partly-paid { background:#FFF5B5; color:#5C4700; }
+    .badge.paid { background:#EAF5DD; color:#2F6B0A; }
+    .badge.active { outline:2px solid var(--cc-blue); }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; text-align:left; }
+    th { font-size:11px; text-transform:uppercase; color:var(--cc-text-secondary); background:var(--cc-neutral-25); white-space:nowrap; }
+    td, th { padding:12px; border-bottom:1px solid var(--cc-border); vertical-align:top; }
+    td { font-size:13px; }
+    input, select, textarea { font:inherit; padding:10px; border:1px solid var(--cc-border-strong); border-radius:5px; max-width:100%; background:#fff; color:var(--cc-navy); }
+    input:not([type=checkbox]):not([type=hidden]), select, textarea { width:100%; }
+    input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px solid var(--cc-blue); outline-offset:2px; }
+    label { display:block; margin:10px 0 5px; font-weight:500; }
+    .helptext { display:block; color:var(--cc-text-secondary); font-size:12px; }
+    .errorlist, .error { color:#A11A1A; }
+    .warning { border-left:4px solid var(--cc-yellow); padding:12px; }
+    .line-form { border:1px solid var(--cc-border); border-radius:6px; padding:16px; margin:16px 0; display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; }
+    .line-form p { margin:0; }
+    .line-form legend { font-weight:500; }
+    .history-event { border-left:2px solid var(--cc-border); padding:0 0 16px 16px; }
+    pre { white-space:pre-wrap; overflow-wrap:anywhere; font-size:11px; }
+    details { margin:14px 0; } summary { cursor:pointer; font-weight:500; }
+    dl { display:grid; grid-template-columns:1fr auto; gap:10px; } dd { margin:0; text-align:right; }
+    .page-head, .page-toolbar { display:flex; gap:16px; flex-wrap:wrap; justify-content:space-between; align-items:center; margin-bottom:20px; }
+    .filters { display:flex; flex-wrap:wrap; gap:8px; }
+    .search-form { display:flex; align-items:center; gap:8px; }
+    .page-heading h1 { display:none; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media(max-width:900px) { .detail-grid,.dashboard-grid { grid-template-columns:minmax(0,1fr); } }
+    @media print { .app-sidebar,.page-actions,button { display:none; } .app { display:block; } .page-content { padding:0; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <div class="app">
+    <aside class="app-sidebar">
+      <div class="brand">
+        <img src="{% static 'billing/cc-logo-v11.svg' %}" alt="Cosmically Creative" width="160" height="101">
+        <div class="brand-rules" aria-hidden="true"></div>
+      </div>
+      <nav class="app-nav" aria-label="Billing">
+        <ul>
+          {% for nav_item in nav_items %}
+            <li>
+              <a href="{{ nav_item.url }}"{% if nav_item.active %} aria-current="page"{% endif %}>{{ nav_item.label }}</a>
+            </li>
+          {% endfor %}
+        </ul>
+      </nav><form method="post" action="{% url 'accounts:logout' %}" style="padding:16px">{% csrf_token %}<button class="button secondary">Sign out</button></form>
+    </aside>
+
+    <div class="app-main">
+      <header class="page-header">
+        <div class="page-header-inner">
+          <h1>{% block page_title %}{% endblock %}</h1>
+          <div class="page-actions">{% block page_actions %}{% endblock %}</div>
+        </div>
+        {% block page_subtitle %}{% endblock %}
+      </header>
+
+      <main class="page-content" id="main-content">
+        {% if messages %}
+          <ul class="messages">
+            {% for message in messages %}
+              <li class="{{ message.tags|default:'' }}">{{ message }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+</body>
+</html>

@@ -20,7 +20,7 @@ def _clear_throttle():
 
 @pytest.fixture
 def owner(db):
-    return get_user_model().objects.create_user("owner", password=PASSWORD)
+    return get_user_model().objects.create_user("owner", password=PASSWORD, is_superuser=True, is_staff=True)
 
 
 def _password_step(client):

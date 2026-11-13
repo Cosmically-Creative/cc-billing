@@ -1,3 +1,4 @@
+{% load static %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -5,10 +6,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Cosmically Creative Billing{% endblock %}</title>
   <style>
-    /* Placeholder styling until Prism's design is implemented. */
+    @font-face { font-family:Rubik; src:url("{% static 'billing/fonts/rubik-latin-400-normal.woff' %}"); font-weight:400; }
+    @font-face { font-family:Rubik; src:url("{% static 'billing/fonts/rubik-latin-600-normal.woff' %}"); font-weight:600; }
+    * { box-sizing:border-box; }
+    .sign-in-brand { display:block; width:180px; height:auto; margin:40px auto 24px; }
+    h1 { font-size:24px; }
+    input:focus-visible,button:focus-visible { outline:3px solid #2d54c7; outline-offset:3px; }
+    @media(max-width:600px) { main { margin:24px 16px!important; padding:24px!important; } }
     :root { --cc-blue:#2d54c7; --cc-yellow:#ffe642; --cc-navy:#0b1532; }
     body { font-family: Rubik, system-ui, sans-serif; margin:0; background:#f5f6fa; color:var(--cc-navy); }
-    main { max-width: 28rem; margin: 4rem auto; background:#fff; padding:2rem; border-radius:12px; border-top:4px solid var(--cc-blue); }
+    main { max-width: 28rem; margin: 24px auto; background:#fff; padding:2rem; border-radius:12px; border-top:4px solid var(--cc-blue); }
     label { display:block; margin:.75rem 0 .25rem; font-weight:500; }
     input { width:100%; padding:.6rem; font-size:1rem; border:1px solid #c9cfdf; border-radius:8px; box-sizing:border-box; }
     button { margin-top:1.25rem; padding:.7rem 1.2rem; background:var(--cc-blue); color:#fff; border:0; border-radius:8px; font-size:1rem; cursor:pointer; }
@@ -16,5 +23,5 @@
     code { word-break: break-all; }
   </style>
 </head>
-<body><main>{% block content %}{% endblock %}</main></body>
+<body><img class="sign-in-brand" src="{% static 'billing/cc-logo-v11.svg' %}" alt="Cosmically Creative"><main>{% block content %}{% endblock %}</main></body>
 </html>

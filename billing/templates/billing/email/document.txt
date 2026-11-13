@@ -1,0 +1,12 @@
+Hello,
+
+Please find your {{ doc.get_kind_display|lower }} {{ doc.display_number }} attached.
+{% if pay_url %}
+View your invoice and pay all or part of the balance:
+{{ pay_url }}
+{% endif %}
+Thank you,
+{{ business.name }}
+{{ business.address_line1 }}
+{{ business.city_state_zip }}
+{{ business.phone }} · {{ business.email }}

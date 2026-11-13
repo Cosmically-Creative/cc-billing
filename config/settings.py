@@ -136,3 +136,14 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": "INFO"},
 }
+
+# Delivery is opt-in at the test install. Local development never opens SMTP by default.
+CCB_EMAIL_ENABLED = env_bool('CCB_EMAIL_ENABLED', False)
+EMAIL_BACKEND = env('EMAIL_BACKEND', 'django.core.mail.backends.dummy.EmailBackend')
+EMAIL_HOST = env('EMAIL_HOST', '')
+EMAIL_PORT = int(env('EMAIL_PORT', '465'))
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_SSL = env_bool('EMAIL_USE_SSL', True)
+EMAIL_TIMEOUT = 20
+DEFAULT_FROM_EMAIL = 'Cosmically Creative <blake@cosmicallycreative.com>'

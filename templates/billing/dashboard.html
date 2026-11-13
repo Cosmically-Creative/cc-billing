@@ -1,0 +1,118 @@
+{% extends "billing/app_base.html" %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block page_subtitle %}<p class="page-subtitle">{{ today }}</p>{% endblock %}
+{% block page_actions %}<a class="button secondary" href="{% url 'billing:new_document' 'quote' %}">+ New quote</a><a class="button" href="{% url 'billing:new_document' 'invoice' %}">+ New invoice</a>{% endblock %}
+{% block content %}
+<div class="grid metrics">
+  {% for metric in metrics %}
+  <div class="card metric">
+    <p class="muted metric-label">{{ metric.label }}</p>
+    <p class="metric-value">{{ metric.value }}</p>
+    <p class="muted metric-detail">{{ metric.detail }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="dashboard-grid"><section class="card">
+  <h2>Needs your review</h2><p class="muted">Drafts do not have a number until you approve them.</p>
+  {% if review_rows %}
+  <div class="table-wrap">
+    <table>
+      <tbody>
+        {% for row in review_rows %}
+        <tr>
+          {% for cell in row.cells %}
+            {% if forloop.first and row.url %}
+            <td><a href="{{ row.url }}">{{ cell }}</a></td>
+            {% else %}
+            <td>{% if forloop.counter == 5 and row.statuses %}{% for status in row.statuses %}<span class="badge {{ status|slugify }}">{{ status }}</span> {% endfor %}{% else %}{{ cell }}{% endif %}</td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">No records yet.</p>
+  {% endif %}
+</section>
+
+<section class="card coming-up">
+  <h2>Coming up</h2>
+  {% if upcoming_rows %}
+  <div class="table-wrap">
+    <table>
+      <tbody>
+        {% for row in upcoming_rows %}
+        <tr>
+          {% for cell in row.cells %}
+            {% if forloop.first and row.url %}
+            <td><a href="{{ row.url }}">{{ cell }}</a></td>
+            {% else %}
+            <td>{% if forloop.counter == 5 and row.statuses %}{% for status in row.statuses %}<span class="badge {{ status|slugify }}">{{ status }}</span> {% endfor %}{% else %}{{ cell }}{% endif %}</td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">No records yet.</p>
+  {% endif %}
+</section>
+
+</div>
+<section class="card">
+  <h2>Open invoices</h2><p><a href="{% url 'billing:documents' 'invoice' %}">View all invoices</a></p>
+  {% if open_rows %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Number</th><th>Customer</th><th>Issued</th><th>Due</th><th>Status</th><th>Total</th><th>Balance</th></tr></thead><tbody>
+        {% for row in open_rows %}
+        <tr>
+          {% for cell in row.cells %}
+            {% if forloop.first and row.url %}
+            <td><a href="{{ row.url }}">{{ cell }}</a></td>
+            {% else %}
+            <td>{% if forloop.counter == 5 and row.statuses %}{% for status in row.statuses %}<span class="badge {{ status|slugify }}">{{ status }}</span> {% endfor %}{% else %}{{ cell }}{% endif %}</td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">No records yet.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Recent activity</h2>
+  {% if activity_rows %}
+  <div class="table-wrap">
+    <table>
+      <tbody>
+        {% for row in activity_rows %}
+        <tr>
+          {% for cell in row.cells %}
+            {% if forloop.first and row.url %}
+            <td><a href="{{ row.url }}">{{ cell }}</a></td>
+            {% else %}
+            <td>{% if forloop.counter == 5 and row.statuses %}{% for status in row.statuses %}<span class="badge {{ status|slugify }}">{{ status }}</span> {% endfor %}{% else %}{{ cell }}{% endif %}</td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">No records yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

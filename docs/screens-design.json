@@ -1,0 +1,1101 @@
+[
+  {
+    "name": "Screen / Dashboard",
+    "width": 1440,
+    "height": 1000,
+    "items": [
+      {
+        "text": "SAMPLE DATA",
+        "x": 1290,
+        "y": 20,
+        "size": "10"
+      },
+      {
+        "text": "Dashboard",
+        "x": 264,
+        "y": 32,
+        "size": "24"
+      },
+      {
+        "text": "Wednesday, March 3, 2027",
+        "x": 264,
+        "y": 66,
+        "size": "13"
+      },
+      {
+        "text": "+ New quote",
+        "x": 1144,
+        "y": 40,
+        "size": "13"
+      },
+      {
+        "text": "+ New invoice",
+        "x": 1264,
+        "y": 40,
+        "size": "13"
+      },
+      {
+        "text": "OWED",
+        "x": 288,
+        "y": 128,
+        "size": "11"
+      },
+      {
+        "text": "$4,091.10",
+        "x": 288,
+        "y": 148,
+        "size": "32"
+      },
+      {
+        "text": "4 open invoices",
+        "x": 288,
+        "y": 192,
+        "size": "13"
+      },
+      {
+        "text": "OVERDUE",
+        "x": 672,
+        "y": 128,
+        "size": "11"
+      },
+      {
+        "text": "$1,600.95",
+        "x": 672,
+        "y": 148,
+        "size": "32"
+      },
+      {
+        "text": "2 invoices past due",
+        "x": 672,
+        "y": 192,
+        "size": "13"
+      },
+      {
+        "text": "PAID THIS MONTH",
+        "x": 1056,
+        "y": 128,
+        "size": "11"
+      },
+      {
+        "text": "$500.00",
+        "x": 1056,
+        "y": 148,
+        "size": "32"
+      },
+      {
+        "text": "2 payments in March",
+        "x": 1056,
+        "y": 192,
+        "size": "13"
+      },
+      {
+        "text": "Needs your review",
+        "x": 288,
+        "y": 272,
+        "size": "16"
+      },
+      {
+        "text": "Drafts don’t have a number until you approve them.",
+        "x": 288,
+        "y": 296,
+        "size": "12"
+      },
+      {
+        "text": "Sample Print Shop (sample)",
+        "x": 288,
+        "y": 334,
+        "size": "14"
+      },
+      {
+        "text": "Draft invoice · logo refresh, business cards, domain",
+        "x": 288,
+        "y": 354,
+        "size": "12"
+      },
+      {
+        "text": "Prepared by Ledger, needs review",
+        "x": 602,
+        "y": 338,
+        "size": "12"
+      },
+      {
+        "text": "$577.70",
+        "x": 830,
+        "y": 336,
+        "size": "14"
+      },
+      {
+        "text": "Review",
+        "x": 936,
+        "y": 336,
+        "size": "12"
+      },
+      {
+        "text": "Sample Pantry (sample)",
+        "x": 288,
+        "y": 390,
+        "size": "14"
+      },
+      {
+        "text": "Recurring draft · annual hosting + domain · renews Mar 28",
+        "x": 288,
+        "y": 410,
+        "size": "12"
+      },
+      {
+        "text": "Draft",
+        "x": 602,
+        "y": 394,
+        "size": "12"
+      },
+      {
+        "text": "$75.95",
+        "x": 830,
+        "y": 392,
+        "size": "14"
+      }
+    ]
+  },
+  {
+    "name": "Screen / Quotes",
+    "width": 1440,
+    "height": 1000,
+    "items": [
+      {
+        "text": "SAMPLE DATA",
+        "x": 1290,
+        "y": 20,
+        "size": "10"
+      },
+      {
+        "text": "Quotes",
+        "x": 264,
+        "y": 32,
+        "size": "24"
+      },
+      {
+        "text": "Tuesday, January 12, 2027",
+        "x": 264,
+        "y": 66,
+        "size": "13"
+      },
+      {
+        "text": "+ New quote",
+        "x": 1272,
+        "y": 40,
+        "size": "13"
+      },
+      {
+        "text": "All 6",
+        "x": 274,
+        "y": 112,
+        "size": "13"
+      },
+      {
+        "text": "Draft 1",
+        "x": 342,
+        "y": 112,
+        "size": "13"
+      },
+      {
+        "text": "Sent 1",
+        "x": 426,
+        "y": 112,
+        "size": "13"
+      },
+      {
+        "text": "Accepted 1",
+        "x": 502,
+        "y": 112,
+        "size": "13"
+      },
+      {
+        "text": "Converted 1",
+        "x": 610,
+        "y": 112,
+        "size": "13"
+      },
+      {
+        "text": "Declined 1",
+        "x": 726,
+        "y": 112,
+        "size": "13"
+      },
+      {
+        "text": "Expired 1",
+        "x": 834,
+        "y": 112,
+        "size": "13"
+      },
+      {
+        "text": "NUMBER",
+        "x": 284,
+        "y": 170,
+        "size": "11"
+      },
+      {
+        "text": "CUSTOMER",
+        "x": 400,
+        "y": 170,
+        "size": "11"
+      },
+      {
+        "text": "SENT",
+        "x": 594,
+        "y": 170,
+        "size": "11"
+      },
+      {
+        "text": "VALID UNTIL",
+        "x": 700,
+        "y": 170,
+        "size": "11"
+      },
+      {
+        "text": "STATUS",
+        "x": 808,
+        "y": 170,
+        "size": "11"
+      },
+      {
+        "text": "TOTAL",
+        "x": 884,
+        "y": 170,
+        "size": "11"
+      },
+      {
+        "text": "Draft",
+        "x": 284,
+        "y": 212,
+        "size": "13"
+      },
+      {
+        "text": "Sample Farm Supply (sample)\nPhase 2 drone photos",
+        "x": 400,
+        "y": 212,
+        "size": "13"
+      },
+      {
+        "text": "—",
+        "x": 594,
+        "y": 212,
+        "size": "12"
+      },
+      {
+        "text": "—",
+        "x": 700,
+        "y": 212,
+        "size": "12"
+      },
+      {
+        "text": "Draft",
+        "x": 816,
+        "y": 212,
+        "size": "12"
+      },
+      {
+        "text": "Prepared by Ledger, needs review",
+        "x": 816,
+        "y": 238,
+        "size": "12"
+      },
+      {
+        "text": "$350.00",
+        "x": 884,
+        "y": 212,
+        "size": "13"
+      },
+      {
+        "text": "Q-2027-0001",
+        "x": 284,
+        "y": 284,
+        "size": "13"
+      }
+    ]
+  },
+  {
+    "name": "Screen / Payments",
+    "width": 1440,
+    "height": 1000,
+    "items": [
+      {
+        "text": "SAMPLE DATA",
+        "x": 1290,
+        "y": 20,
+        "size": "10"
+      },
+      {
+        "text": "Payments",
+        "x": 264,
+        "y": 32,
+        "size": "24"
+      },
+      {
+        "text": "January 2027 · all amounts in USD",
+        "x": 264,
+        "y": 66,
+        "size": "13"
+      },
+      {
+        "text": "Export CSV",
+        "x": 1078,
+        "y": 40,
+        "size": "13"
+      },
+      {
+        "text": "Record check or cash",
+        "x": 1194,
+        "y": 40,
+        "size": "13"
+      },
+      {
+        "text": "RECEIVED IN JANUARY",
+        "x": 284,
+        "y": 124,
+        "size": "11"
+      },
+      {
+        "text": "$3,482.95",
+        "x": 284,
+        "y": 144,
+        "size": "26"
+      },
+      {
+        "text": "5 payments",
+        "x": 284,
+        "y": 180,
+        "size": "12"
+      },
+      {
+        "text": "ONLINE (STRIPE)",
+        "x": 572,
+        "y": 124,
+        "size": "11"
+      },
+      {
+        "text": "$2,882.95",
+        "x": 572,
+        "y": 144,
+        "size": "26"
+      },
+      {
+        "text": "Fees $68.85, kept separate",
+        "x": 572,
+        "y": 180,
+        "size": "12"
+      },
+      {
+        "text": "CHECK + CASH",
+        "x": 860,
+        "y": 124,
+        "size": "11"
+      },
+      {
+        "text": "$600.00",
+        "x": 860,
+        "y": 144,
+        "size": "26"
+      },
+      {
+        "text": "Recorded by Blake",
+        "x": 860,
+        "y": 180,
+        "size": "12"
+      },
+      {
+        "text": "REFUNDED",
+        "x": 1148,
+        "y": 124,
+        "size": "11"
+      },
+      {
+        "text": "–$40.00",
+        "x": 1148,
+        "y": 144,
+        "size": "26"
+      },
+      {
+        "text": "1 refund via Stripe",
+        "x": 1148,
+        "y": 180,
+        "size": "12"
+      },
+      {
+        "text": "All",
+        "x": 278,
+        "y": 240,
+        "size": "13"
+      },
+      {
+        "text": "Online",
+        "x": 338,
+        "y": 240,
+        "size": "13"
+      },
+      {
+        "text": "Check",
+        "x": 422,
+        "y": 240,
+        "size": "13"
+      },
+      {
+        "text": "Cash",
+        "x": 498,
+        "y": 240,
+        "size": "13"
+      },
+      {
+        "text": "Refunds",
+        "x": 566,
+        "y": 240,
+        "size": "13"
+      },
+      {
+        "text": "DATE",
+        "x": 284,
+        "y": 298,
+        "size": "11"
+      },
+      {
+        "text": "INVOICE",
+        "x": 384,
+        "y": 298,
+        "size": "11"
+      },
+      {
+        "text": "CUSTOMER",
+        "x": 504,
+        "y": 298,
+        "size": "11"
+      }
+    ]
+  },
+  {
+    "name": "Screen / Settings",
+    "width": 1440,
+    "height": 1260,
+    "items": [
+      {
+        "text": "SAMPLE DATA",
+        "x": 1290,
+        "y": 20,
+        "size": "10"
+      },
+      {
+        "text": "Settings",
+        "x": 264,
+        "y": 32,
+        "size": "24"
+      },
+      {
+        "text": "Blake only. Ledger can’t see or change settings.",
+        "x": 264,
+        "y": 66,
+        "size": "13"
+      },
+      {
+        "text": "Business details",
+        "x": 288,
+        "y": 124,
+        "size": "16"
+      },
+      {
+        "text": "Shown on new PDFs and emails. Issued PDFs never change.",
+        "x": 288,
+        "y": 148,
+        "size": "12"
+      },
+      {
+        "text": "Business name",
+        "x": 288,
+        "y": 180,
+        "size": "12"
+      },
+      {
+        "text": "Cosmically Creative",
+        "x": 300,
+        "y": 210,
+        "size": "13"
+      },
+      {
+        "text": "Phone",
+        "x": 552,
+        "y": 180,
+        "size": "12"
+      },
+      {
+        "text": "(712) 578-6203",
+        "x": 564,
+        "y": 210,
+        "size": "13"
+      },
+      {
+        "text": "Mailing address",
+        "x": 288,
+        "y": 256,
+        "size": "12"
+      },
+      {
+        "text": "1444 1st Ave SE, Sioux Center, IA 51250",
+        "x": 300,
+        "y": 286,
+        "size": "13"
+      },
+      {
+        "text": "Contact email",
+        "x": 288,
+        "y": 332,
+        "size": "12"
+      },
+      {
+        "text": "blake@cosmicallycreative.com",
+        "x": 300,
+        "y": 362,
+        "size": "13"
+      },
+      {
+        "text": "Logo",
+        "x": 640,
+        "y": 332,
+        "size": "12"
+      },
+      {
+        "text": "v11",
+        "x": 728,
+        "y": 366,
+        "size": "11"
+      },
+      {
+        "text": "Sales tax and products",
+        "x": 288,
+        "y": 440,
+        "size": "16"
+      },
+      {
+        "text": "Iowa state tax + local tax where the client is",
+        "x": 304,
+        "y": 486,
+        "size": "12"
+      },
+      {
+        "text": "6.00% + 0–1%",
+        "x": 304,
+        "y": 502,
+        "size": "16"
+      },
+      {
+        "text": "Local rates (8)…",
+        "x": 682,
+        "y": 494,
+        "size": "12"
+      },
+      {
+        "text": "Rates have start and end dates (checked Nov 12, 2026). Issued invoices keep theirs.",
+        "x": 288,
+        "y": 540,
+        "size": "11"
+      },
+      {
+        "text": "PRODUCT",
+        "x": 288,
+        "y": 574,
+        "size": "11"
+      },
+      {
+        "text": "TAXED BY DEFAULT",
+        "x": 644,
+        "y": 574,
+        "size": "11"
+      },
+      {
+        "text": "Website build, design, new pages",
+        "x": 288,
+        "y": 608,
+        "size": "13"
+      },
+      {
+        "text": "Taxed",
+        "x": 688,
+        "y": 608,
+        "size": "12"
+      },
+      {
+        "text": "Drone photo / video",
+        "x": 288,
+        "y": 648,
+        "size": "13"
+      }
+    ]
+  },
+  {
+    "name": "Screen / Tax report",
+    "width": 1440,
+    "height": 1000,
+    "items": [
+      {
+        "text": "SAMPLE DATA",
+        "x": 1290,
+        "y": 20,
+        "size": "10"
+      },
+      {
+        "text": "Tax report",
+        "x": 264,
+        "y": 32,
+        "size": "24"
+      },
+      {
+        "text": "December 2026 · grouped by local tax location · Blake and Ledger can view",
+        "x": 264,
+        "y": 66,
+        "size": "13"
+      },
+      {
+        "text": "Month",
+        "x": 267,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Quarter",
+        "x": 364,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "December 2026  ▾",
+        "x": 488,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Download CSV",
+        "x": 1154,
+        "y": 112,
+        "size": "13"
+      },
+      {
+        "text": "Print",
+        "x": 1276,
+        "y": 112,
+        "size": "13"
+      },
+      {
+        "text": "TAXABLE SALES",
+        "x": 282,
+        "y": 178,
+        "size": "11"
+      },
+      {
+        "text": "$4,640.00",
+        "x": 282,
+        "y": 200,
+        "size": "22"
+      },
+      {
+        "text": "STATE TAX 6%",
+        "x": 512,
+        "y": 178,
+        "size": "11"
+      },
+      {
+        "text": "$278.40",
+        "x": 512,
+        "y": 200,
+        "size": "22"
+      },
+      {
+        "text": "LOCAL TAX",
+        "x": 742,
+        "y": 178,
+        "size": "11"
+      },
+      {
+        "text": "$46.40",
+        "x": 742,
+        "y": 200,
+        "size": "22"
+      },
+      {
+        "text": "EXEMPT SALES",
+        "x": 972,
+        "y": 178,
+        "size": "11"
+      },
+      {
+        "text": "$107.00",
+        "x": 972,
+        "y": 200,
+        "size": "22"
+      },
+      {
+        "text": "NOT TAXABLE",
+        "x": 1202,
+        "y": 178,
+        "size": "11"
+      },
+      {
+        "text": "$211.90",
+        "x": 1202,
+        "y": 200,
+        "size": "22"
+      },
+      {
+        "text": "By local tax location",
+        "x": 288,
+        "y": 290,
+        "size": "16"
+      },
+      {
+        "text": "Tax invoiced counts invoices approved this month. Tax received splits each payment in the same proportion as its invoice.",
+        "x": 288,
+        "y": 314,
+        "size": "12"
+      },
+      {
+        "text": "LOCATION",
+        "x": 288,
+        "y": 358,
+        "size": "10"
+      },
+      {
+        "text": "LOCAL",
+        "x": 464,
+        "y": 358,
+        "size": "10"
+      },
+      {
+        "text": "TAXABLE",
+        "x": 564,
+        "y": 358,
+        "size": "10"
+      },
+      {
+        "text": "STATE 6%",
+        "x": 704,
+        "y": 358,
+        "size": "10"
+      },
+      {
+        "text": "LOCAL TAX",
+        "x": 824,
+        "y": 358,
+        "size": "10"
+      }
+    ]
+  },
+  {
+    "name": "Screen / Customers",
+    "width": 1440,
+    "height": 1000,
+    "items": [
+      {
+        "text": "SAMPLE DATA",
+        "x": 1290,
+        "y": 20,
+        "size": "10"
+      },
+      {
+        "text": "Customers",
+        "x": 264,
+        "y": 32,
+        "size": "24"
+      },
+      {
+        "text": "7 customers · 1 needs an address and 2 have a Ledger proposal to confirm",
+        "x": 264,
+        "y": 66,
+        "size": "13"
+      },
+      {
+        "text": "+ New customer",
+        "x": 1254,
+        "y": 40,
+        "size": "13"
+      },
+      {
+        "text": "Search name, email or town",
+        "x": 276,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "All 7",
+        "x": 652,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Needs tax location 1",
+        "x": 721,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Proposed by Ledger 2",
+        "x": 901,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Tax-exempt 1",
+        "x": 1081,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Out of state 1",
+        "x": 1201.7999999999884,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "CUSTOMER",
+        "x": 288,
+        "y": 174,
+        "size": "11"
+      },
+      {
+        "text": "TAX LOCATION",
+        "x": 544,
+        "y": 174,
+        "size": "11"
+      },
+      {
+        "text": "STATUS",
+        "x": 784,
+        "y": 174,
+        "size": "11"
+      },
+      {
+        "text": "LAST INVOICE",
+        "x": 1044,
+        "y": 174,
+        "size": "11"
+      },
+      {
+        "text": "OPEN BALANCE",
+        "x": 1244,
+        "y": 174,
+        "size": "11"
+      },
+      {
+        "text": "Sample Bakery Co. (sample)",
+        "x": 288,
+        "y": 212,
+        "size": "13"
+      },
+      {
+        "text": "jordan@example.com",
+        "x": 288,
+        "y": 232,
+        "size": "11"
+      },
+      {
+        "text": "Hull (city) · 7%",
+        "x": 544,
+        "y": 220,
+        "size": "13"
+      },
+      {
+        "text": "CC-2026-0001",
+        "x": 1044,
+        "y": 220,
+        "size": "13"
+      },
+      {
+        "text": "$0.00",
+        "x": 1244,
+        "y": 220,
+        "size": "13"
+      },
+      {
+        "text": "Sample Lodge & Kennel (sample)",
+        "x": 288,
+        "y": 276,
+        "size": "13"
+      },
+      {
+        "text": "casey@example.com",
+        "x": 288,
+        "y": 296,
+        "size": "11"
+      },
+      {
+        "text": "Orange City (city) · 7%",
+        "x": 544,
+        "y": 284,
+        "size": "13"
+      },
+      {
+        "text": "Confirmed",
+        "x": 792,
+        "y": 284,
+        "size": "11"
+      },
+      {
+        "text": "CC-2026-0003",
+        "x": 1044,
+        "y": 284,
+        "size": "13"
+      }
+    ]
+  },
+  {
+    "name": "Screen / Invoices",
+    "width": 1440,
+    "height": 1000,
+    "items": [
+      {
+        "text": "SAMPLE DATA",
+        "x": 1290,
+        "y": 20,
+        "size": "10"
+      },
+      {
+        "text": "Invoices",
+        "x": 264,
+        "y": 32,
+        "size": "24"
+      },
+      {
+        "text": "Wednesday, January 20, 2027",
+        "x": 264,
+        "y": 66,
+        "size": "13"
+      },
+      {
+        "text": "+ New invoice",
+        "x": 1266,
+        "y": 40,
+        "size": "13"
+      },
+      {
+        "text": "Search number or customer",
+        "x": 276,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "All 8",
+        "x": 592,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Draft 1",
+        "x": 661,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Approved 0",
+        "x": 744.8000000000029,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Sent 0",
+        "x": 850.8000000000029,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Partly paid 1",
+        "x": 927.1999999999971,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Overdue 1",
+        "x": 1055.4000000000015,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Paid 4",
+        "x": 1154,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "Void 1",
+        "x": 1230.4000000000015,
+        "y": 114,
+        "size": "13"
+      },
+      {
+        "text": "NUMBER",
+        "x": 288,
+        "y": 174,
+        "size": "11"
+      },
+      {
+        "text": "CUSTOMER",
+        "x": 434,
+        "y": 174,
+        "size": "11"
+      },
+      {
+        "text": "ISSUED",
+        "x": 704,
+        "y": 174,
+        "size": "11"
+      },
+      {
+        "text": "DUE",
+        "x": 824,
+        "y": 174,
+        "size": "11"
+      },
+      {
+        "text": "STATUS",
+        "x": 944,
+        "y": 174,
+        "size": "11"
+      },
+      {
+        "text": "TOTAL",
+        "x": 1124,
+        "y": 174,
+        "size": "11"
+      },
+      {
+        "text": "BALANCE",
+        "x": 1256,
+        "y": 174,
+        "size": "11"
+      },
+      {
+        "text": "Draft",
+        "x": 288,
+        "y": 212,
+        "size": "13"
+      },
+      {
+        "text": "Sample Print Shop (sample)",
+        "x": 434,
+        "y": 212,
+        "size": "13"
+      },
+      {
+        "text": "No tax location yet",
+        "x": 434,
+        "y": 232,
+        "size": "11"
+      },
+      {
+        "text": "—",
+        "x": 704,
+        "y": 212,
+        "size": "12"
+      },
+      {
+        "text": "—",
+        "x": 824,
+        "y": 212,
+        "size": "12"
+      }
+    ]
+  }
+]

@@ -292,9 +292,9 @@ def test_16_mark_sent_manually(blake, make_invoice, products):
 
 
 # 17 --------------------------------------------------------------------------
-@pytest.mark.skip(reason="Email sending is built at step 5 (SMTP via ArkHost, set up at the test install)")
-def test_17_email_from_blake():
-    pass
+# Test 17 (sender, attachment, recipients and history) is now exercised with real PDFs
+# and an in-memory mailbox in test_ui_delivery.test_17_invoice_send_records_and_deduplicates.
+# Live SMTP remains an install-time check.
 
 
 # 18 --------------------------------------------------------------------------

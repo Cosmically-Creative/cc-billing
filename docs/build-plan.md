@@ -13,3 +13,11 @@
 
 Workers: GLM Flash only, sample data only, only the files a job needs; Forge reviews every line before it is committed.
 They never touch billing math, numbering, locking, the change log, tax, permissions, Stripe, secrets or deployment.
+
+## Checked phase progress (2026-11-13)
+
+PDF/screens/sending implementation is now in the local working copy, including real PDF and
+in-memory email integration tests. See [the phase review](local-build-review.md). The early kickoff
+was not a completed build; this update follows review and integration of the worker drafts.
+No deployment or live email has occurred. API/MCP, public payment integration and install checks
+remain. Dates above are planning targets, not a claim that work runs unattended between turns.
