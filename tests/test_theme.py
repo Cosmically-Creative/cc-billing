@@ -98,7 +98,7 @@ def test_sidebar_logo_matches_background(owner_client):
     """Logo v10 (navy letters) on the white sidebar, Logo v11 (white letters) on navy."""
     html = owner_client.get(reverse('home')).content.decode()
     assert 'class="logo-on-light" src="/static/billing/cc-logo-v10.png"' in html
-    assert 'class="logo-on-dark" src="/static/billing/cc-logo-v11.svg"' in html
+    assert 'class="logo-on-dark" src="/static/billing/cc-logo-v11.png"' in html
     assert '.app-sidebar .brand .logo-on-dark { display: none; }' in html
 
 
