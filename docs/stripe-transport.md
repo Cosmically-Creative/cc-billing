@@ -12,7 +12,7 @@ versa. Live mode also requires the explicit `CCB_STRIPE_LIVE_ENABLED` gate, left
 API version: `2026-10-28.endive`; client-scoped credentials, no module-level API key.
 
 The pay link is an unguessable invoice capability, not an API token. Responses are not cached or
-indexed, send no referrer, and have a restrictive CSP. It displays the current ledger balance and
+indexed, send no referrer to other sites (`same-origin`; `no-referrer` makes browsers send `Origin: null` and fails CSRF), and have a restrictive CSP. It displays the current ledger balance and
 can download the integrity-checked original PDF. Owner screens, email addresses and history are not
 public. Pay-link-disabled invoices return 404. Redact capability paths from production access logs.
 

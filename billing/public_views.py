@@ -17,7 +17,9 @@ from .permissions import BillingError
 
 def private_response(response):
     response['Cache-Control']='no-store, private'
-    response['Referrer-Policy']='no-referrer'
+    # same-origin, not no-referrer: with no-referrer, browsers send "Origin: null" on the page's own
+    # Pay form and Django's CSRF check refuses it. same-origin still sends nothing to Stripe or other sites.
+    response['Referrer-Policy']='same-origin'
     response['X-Robots-Tag']='noindex, nofollow'
     response['Content-Security-Policy']="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; font-src 'self'; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'; base-uri 'none'"
     return response

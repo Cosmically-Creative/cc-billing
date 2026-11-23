@@ -281,12 +281,26 @@ def test_public_pdf_requires_capability_and_verified_file(fake,invoice,blake,cli
     doc=svc.approve(blake,doc,now=central(2026,12,10),render_pdf=pdf.render_approved)
     svc.mark_sent(blake,doc)
     response=client.get(reverse('public_pdf',args=[doc.pay_code]))
-    assert response.status_code==200 and response.content.startswith(b'%PDF') and response['Referrer-Policy']=='no-referrer'
+    assert response.status_code==200 and response.content.startswith(b'%PDF') and response['Referrer-Policy']=='same-origin'
     assert client.get('/pay/not-a-real-invoice').status_code==404
     page=client.get(reverse('pay_invoice',args=[doc.pay_code]))
     assert page.status_code==200 and b'Continue to secure payment' in page.content and b'owner@example.com' not in page.content
     strict=Client(enforce_csrf_checks=True)
     assert strict.post(reverse('pay_invoice',args=[doc.pay_code]),{'choice':'full','request_id':str(uuid.uuid4())}).status_code==403
+
+
+def test_pay_form_passes_csrf_from_its_own_page(fake,invoice,settings):
+    """A browser on the pay page must send its real Origin; "null" (from no-referrer) was refused in production."""
+    settings.ALLOWED_HOSTS=['billing.example.com']; settings.CSRF_TRUSTED_ORIGINS=['https://billing.example.com']
+    url=reverse('pay_invoice',args=[invoice.pay_code]); browser=Client(enforce_csrf_checks=True)
+    page=browser.get(url,HTTP_HOST='billing.example.com',secure=True)
+    assert page['Referrer-Policy']=='same-origin'
+    token=browser.cookies[settings.CSRF_COOKIE_NAME].value
+    data={'choice':'full','request_id':str(uuid.uuid4()),'csrfmiddlewaretoken':token}
+    refused=browser.post(url,data,HTTP_HOST='billing.example.com',HTTP_ORIGIN='null',secure=True)
+    assert refused.status_code==403
+    accepted=browser.post(url,dict(data,request_id=str(uuid.uuid4())),HTTP_HOST='billing.example.com',HTTP_ORIGIN='https://billing.example.com',secure=True)
+    assert accepted.status_code!=403
 
 
 def test_checkout_facts_and_terminal_state_guard(fake,invoice):
