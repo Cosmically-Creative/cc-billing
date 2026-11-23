@@ -196,11 +196,12 @@ def document_edit(request, kind=None, pk=None, credit_for=None):
     form = DraftForm(request.POST or None, instance=doc, initial={'customer': request.GET.get('customer')} if not pk and not invoice else None)
     if doc.kind == 'credit_note':
         form.fields['customer'].disabled = True
-    initial = [dict(product=li.product_id, description=li.description, quantity=pdf.fmt_qty(li.qty_milli).replace(',', ''), rate=money.format_usd(li.unit_cents), discount=money.format_usd(li.discount_cents), discount_label=li.discount_label, taxable=li.taxable) for li in (doc.lines.all() if pk else invoice.lines.all())] if pk or invoice else []
+    initial = [dict(product=li.product_id, description=li.description, quantity=pdf.fmt_qty(li.qty_milli).replace(',', ''), rate=money.format_usd(li.unit_cents).replace('$', ''), discount=money.format_usd(li.discount_cents).replace('$', '') if li.discount_cents else '', discount_label=li.discount_label, taxable=li.taxable) for li in (doc.lines.all() if pk else invoice.lines.all())] if pk or invoice else []
     lines = LineFormSet(request.POST or None, initial=initial, prefix='lines')
     totals = ctx = None
     if request.method == 'POST' and form.is_valid() and lines.is_valid():
-        data = [f.line_data() for f in lines if f.cleaned_data and not f.cleaned_data.get('DELETE')]
+        kept = [f for f in lines if f.cleaned_data and not f.cleaned_data.get('DELETE')]
+        data = [f.line_data() for f in kept]
         fields = {k: form.cleaned_data[k] for k in form.Meta.fields}
         try:
             totals, ctx, preview = _draft_preview(doc, data)
@@ -208,7 +209,8 @@ def document_edit(request, kind=None, pk=None, credit_for=None):
             if mode == 'preview_pdf':
                 return HttpResponse(pdf.render_pdf_bytes(pdf.document_context(preview, payments=[])), content_type='application/pdf', headers={'Cache-Control':'no-store'})
             if mode == 'preview':
-                return ui(request, 'billing/totals.html', 'Preview totals', totals=totals, tax_context=ctx)
+                line_amounts = {f.prefix: money.format_usd(r.net_cents) for f, r in zip(kept, totals.lines)}
+                return ui(request, 'billing/totals.html', 'Preview totals', totals=totals, tax_context=ctx, line_amounts=line_amounts)
             if mode != 'save':
                 raise BillingError('Choose a valid action.')
             if pk:

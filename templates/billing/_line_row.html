@@ -1,0 +1,20 @@
+{# One invoice line. Desktop: one row under shared column headings. Narrow: a compact two-row card with its own labels. #}
+<div class="line-row" role="group" aria-label="Line {{ number }}" data-line>
+  {% for hidden in line.hidden_fields %}{{ hidden }}{% endfor %}
+  <div class="lc lc-product"><label class="cell-label" for="{{ line.product.id_for_label }}">Product</label>{{ line.product }}</div>
+  <div class="lc lc-desc"><label class="cell-label" for="{{ line.description.id_for_label }}">Description</label>{{ line.description }}{{ line.description.errors }}</div>
+  <div class="lc lc-qty"><label class="cell-label" for="{{ line.quantity.id_for_label }}">Qty</label>{{ line.quantity }}{{ line.quantity.errors }}</div>
+  <div class="lc lc-rate"><label class="cell-label" for="{{ line.rate.id_for_label }}">Rate</label><span class="money-input"><span aria-hidden="true">$</span>{{ line.rate }}</span>{{ line.rate.errors }}</div>
+  <div class="lc lc-amount"><span class="cell-label">Amount</span><output data-line-amount aria-label="Line {{ number }} amount">—</output></div>
+  <div class="lc lc-tax"><label class="tax-toggle" for="{{ line.taxable.id_for_label }}">{{ line.taxable }}<span class="tax-word">Taxable</span></label></div>
+  <div class="lc lc-remove">{% if line.DELETE %}<label class="remove-fallback" for="{{ line.DELETE.id_for_label }}">{{ line.DELETE }} Remove</label>{% endif %}<button type="button" class="icon-button" data-remove-line aria-label="Remove line {{ number }}" title="Remove line"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M7 3h6m-9 3h12m-1.5 0-.7 10a1.5 1.5 0 0 1-1.5 1.4H7.7a1.5 1.5 0 0 1-1.5-1.4L5.5 6m3 3v5m3-5v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+  <div class="lc lc-discount">
+    <button type="button" class="link-button add-discount" data-toggle-discount aria-expanded="false">+ Add discount</button>
+    <div class="discount-fields">
+      <div class="discount-amount"><label for="{{ line.discount.id_for_label }}">Discount</label><span class="money-input"><span aria-hidden="true">$</span>{{ line.discount }}</span>{{ line.discount.errors }}</div>
+      <div class="discount-label"><label for="{{ line.discount_label.id_for_label }}">Shown on the invoice as</label>{{ line.discount_label }}{{ line.discount_label.errors }}</div>
+      <button type="button" class="link-button remove-discount" data-clear-discount>Remove discount</button>
+    </div>
+  </div>
+  {% if line.non_field_errors or line.product.errors or line.taxable.errors %}<div class="lc lc-errors">{{ line.non_field_errors }}{{ line.product.errors }}{{ line.taxable.errors }}</div>{% endif %}
+</div>

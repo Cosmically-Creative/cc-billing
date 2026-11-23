@@ -3,3 +3,4 @@
 {% if form.errors or lines.errors %}<p class="error">Correct the customer and line fields before previewing.</p>{{ form.errors }}{{ lines.non_form_errors }}{% for line in lines %}{{ line.errors }}{% endfor %}{% endif %}
 {% if tax_context.missing %}<p class="warning">Add the client's address first. Confirm the tax location before approval.</p>{% endif %}
 {% if totals %}<dl><dt>Subtotal</dt><dd>{{ totals.subtotal_cents|usd }}</dd><dt>Discount</dt><dd>{{ totals.discount_cents|usd }}</dd><dt>Taxable amount</dt><dd>{{ totals.taxable_cents|usd }}</dd><dt>{{ tax_context.label|default:'Sales tax' }}</dt><dd>{{ totals.tax_cents|usd }}</dd><dt>Total</dt><dd><strong>{{ totals.total_cents|usd }}</strong></dd></dl>{% endif %}</div>
+{% if line_amounts %}{{ line_amounts|json_script:'line-amounts' }}{% endif %}

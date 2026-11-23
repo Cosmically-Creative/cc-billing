@@ -454,9 +454,63 @@
     .helptext { display:block; color:var(--cc-text-secondary); font-size:12px; }
     .errorlist, .error { color:var(--cc-error-text); }
     .warning { border-left:4px solid var(--cc-focus); padding:12px; }
-    .line-form { border:1px solid var(--cc-border); border-radius:6px; padding:16px; margin:16px 0; display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; }
-    .line-form p { margin:0; }
-    .line-form legend { font-weight:500; }
+    /* Line items: one row per line under shared headings; a compact two-row card when the card is narrow. */
+    .line-items { container-type:inline-size; }
+    .line-table { border:1px solid var(--cc-border); border-radius:8px; overflow:hidden; }
+    .line-head, .line-row { display:grid; grid-template-columns:minmax(120px,.9fr) minmax(160px,2fr) 64px 104px 92px 56px 36px; column-gap:10px; align-items:center; padding:0 12px; }
+    .line-head { grid-template-areas:none; background:var(--cc-surface-raised); color:var(--cc-text-secondary); font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.04em; padding-top:9px; padding-bottom:9px; border-bottom:1px solid var(--cc-border); }
+    .line-head .num { text-align:right; } .line-head .center { text-align:center; }
+    .line-row { grid-template-areas:"product desc qty rate amount tax remove" "discount discount discount discount discount discount discount" "errors errors errors errors errors errors errors"; padding-top:10px; padding-bottom:6px; border-bottom:1px solid var(--cc-border); }
+    .line-row:last-child { border-bottom:0; }
+    .line-row.is-removed { display:none; }
+    .lc { min-width:0; } .lc-product { grid-area:product; } .lc-desc { grid-area:desc; } .lc-qty { grid-area:qty; } .lc-rate { grid-area:rate; } .lc-amount { grid-area:amount; } .lc-tax { grid-area:tax; } .lc-remove { grid-area:remove; } .lc-discount { grid-area:discount; } .lc-errors { grid-area:errors; }
+    .line-row input:not([type=checkbox]), .line-row select { padding:8px 10px; }
+    .lc-qty input { text-align:right; }
+    .cell-label { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+    .money-input { position:relative; display:block; }
+    .money-input > span { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--cc-text-muted); pointer-events:none; }
+    .money-input input { padding-left:22px !important; text-align:right; }
+    .lc-amount output { display:block; text-align:right; font-weight:500; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .lc-tax { display:flex; justify-content:center; align-items:center; }
+    .tax-toggle { display:inline-flex; align-items:center; gap:6px; margin:0; font-weight:400; cursor:pointer; }
+    .tax-toggle input, .remove-fallback input { width:18px; height:18px; accent-color:var(--cc-action); margin:0; }
+    .tax-word { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+    .icon-button { display:none; width:32px; height:32px; padding:0; border:0; border-radius:6px; background:transparent; color:var(--cc-text-muted); cursor:pointer; align-items:center; justify-content:center; }
+    .icon-button:hover { color:var(--cc-error-text); background:var(--cc-surface-raised); }
+    .icon-button:focus-visible, .link-button:focus-visible { outline:3px solid var(--cc-focus); outline-offset:2px; }
+    .remove-fallback { display:flex; align-items:center; gap:4px; margin:0; font-size:12px; font-weight:400; }
+    .link-button { border:0; background:none; padding:4px 0; font:inherit; font-size:13px; color:var(--cc-link); cursor:pointer; }
+    .link-button:hover { color:var(--cc-link-hover); text-decoration:underline; }
+    .add-discount { display:none; }
+    .lc-discount { padding-top:2px; }
+    .discount-fields { display:grid; grid-template-columns:150px minmax(0,320px) auto; gap:10px; align-items:end; padding:6px 0 8px; }
+    .discount-fields label { margin:0 0 4px; font-size:12px; font-weight:500; color:var(--cc-text-secondary); }
+    .remove-discount { display:none; justify-self:start; padding-bottom:9px; }
+    .lc-errors .errorlist, .line-row .errorlist { margin:4px 0 0; padding:0; list-style:none; font-size:12px; }
+    .add-line { margin-top:14px; }
+    .line-undo { margin:10px 0 0; font-size:13px; color:var(--cc-text-secondary); }
+    /* With the script: trash button instead of the Remove checkbox; discount hidden until asked for. */
+    .js-lines .remove-fallback { display:none; }
+    .js-lines .icon-button { display:inline-flex; }
+    .js-lines .line-row:not(.has-discount) .discount-fields { display:none; }
+    .js-lines .line-row:not(.has-discount) .add-discount { display:inline-block; }
+    .js-lines .line-row.has-discount .remove-discount { display:inline-block; }
+    @container (max-width:719px) {
+      .line-head { display:none; }
+      .line-table { border:0; border-radius:0; } #line-forms { display:grid; gap:12px; }
+      .line-row { grid-template-columns:80px 120px minmax(0,1fr) auto auto 32px; grid-template-areas:"product product desc desc desc remove" "qty rate . amount tax tax" "discount discount discount discount discount discount" "errors errors errors errors errors errors"; row-gap:8px; padding:12px; border:1px solid var(--cc-border); border-radius:8px; align-items:end; }
+      .line-row:last-child { border-bottom:1px solid var(--cc-border); }
+      .line-row .cell-label { position:static; width:auto; height:auto; clip:auto; display:block; margin:0 0 4px; font-size:12px; font-weight:500; color:var(--cc-text-secondary); }
+      .lc-remove { align-self:end; padding-bottom:4px; }
+      .lc-amount output { padding:8px 0; } .lc-amount .cell-label { text-align:right; }
+      .lc-tax { justify-content:flex-start; padding-bottom:10px; }
+      .tax-word { position:static; width:auto; height:auto; clip:auto; }
+      .discount-fields { grid-template-columns:120px minmax(0,1fr); } .remove-discount { grid-column:1 / -1; padding:0; }
+    }
+    @container (max-width:460px) {
+      .line-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px; grid-template-areas:"product product remove" "desc desc desc" "qty rate rate" "amount tax tax" "discount discount discount" "errors errors errors"; }
+      .lc-amount output, .lc-amount .cell-label { text-align:left; }
+    }
     .history-event { border-left:2px solid var(--cc-border); padding:0 0 16px 16px; }
     pre { white-space:pre-wrap; overflow-wrap:anywhere; font-size:11px; }
     details { margin:14px 0; } summary { cursor:pointer; font-weight:500; }

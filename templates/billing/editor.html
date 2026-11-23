@@ -5,10 +5,14 @@
 <form method="post" id="draft-editor" data-preview-url="{{ request.path }}">{% csrf_token %}
 <div class="detail-grid"><div>
 <section class="card"><h2>Details</h2>{{ form.non_field_errors }}{{ form.customer.as_field_group }}</section>
-<section class="card"><h2>Line items</h2>{{ lines.management_form }}{{ lines.non_form_errors }}
-<div id="line-forms">{% for line in lines %}<fieldset class="line-form"><legend>Line {{ forloop.counter }}</legend>{{ line.as_p }}</fieldset>{% endfor %}</div>
-<template id="empty-line"><fieldset class="line-form"><legend>New line</legend>{{ lines.empty_form.as_p }}</fieldset></template>
-<button type="button" id="add-line" class="button secondary">Add line</button></section>
+<section class="card line-items"><h2>Line items</h2>{{ lines.management_form }}{{ lines.non_form_errors }}
+<div class="line-table">
+<div class="line-head" aria-hidden="true"><span>Product</span><span>Description</span><span class="num">Qty</span><span class="num">Rate</span><span class="num">Amount</span><span class="center">Tax</span><span></span></div>
+<div id="line-forms">{% for line in lines %}{% include 'billing/_line_row.html' with line=line number=forloop.counter %}{% endfor %}</div>
+</div>
+<template id="empty-line">{% include 'billing/_line_row.html' with line=lines.empty_form number='new' %}</template>
+<p class="line-undo" id="line-undo" hidden role="status"><span></span> <button type="button" class="link-button" data-undo-remove>Undo</button></p>
+<button type="button" id="add-line" class="button secondary add-line">+ Add line</button></section>
 <section class="card"><h2>Notes and options</h2>{{ form.notes.as_field_group }}{{ form.donated.as_field_group }}{{ form.late_fee_enabled.as_field_group }}{{ form.late_fee_bp.as_field_group }}<details><summary>Tax location override</summary>{{ form.tax_override_state.as_field_group }}{{ form.tax_override_jurisdiction.as_field_group }}</details><details><summary>Draft email text</summary>{{ form.email_subject.as_field_group }}{{ form.email_body.as_field_group }}</details></section>
 </div><aside><div id="live-totals"><section class="card"><h2>Totals</h2><p>Enter the lines to preview totals.</p></section></div><section class="card"><h2>Actions</h2><button class="button" name="action" value="save">Save draft</button><button class="button secondary" name="action" value="preview_pdf" formtarget="_blank">Preview PDF</button><p class="muted">A number is assigned only after approval on the review screen.</p></section></aside></div></form>
 {{ editor_products|json_script:"editor-products" }}

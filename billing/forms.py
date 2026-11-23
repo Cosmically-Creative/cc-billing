@@ -88,12 +88,12 @@ class DraftForm(forms.ModelForm):
 
 
 class LineForm(forms.Form):
-    product = forms.ModelChoiceField(Product.objects.filter(active=True), required=False)
-    description = forms.CharField(max_length=500)
-    quantity = forms.CharField(initial='1', widget=forms.TextInput(attrs={'inputmode': 'decimal'}))
-    rate = DollarsField(label='Rate ($)')
-    discount = DollarsField(label='Discount ($)', required=False)
-    discount_label = forms.CharField(max_length=200, required=False)
+    product = forms.ModelChoiceField(Product.objects.filter(active=True), required=False, empty_label='Custom item')
+    description = forms.CharField(max_length=500, widget=forms.TextInput(attrs={'placeholder': 'What was done or sold'}))
+    quantity = forms.CharField(label='Qty', initial='1', widget=forms.TextInput(attrs={'inputmode': 'decimal'}))
+    rate = DollarsField(label='Rate', widget=forms.TextInput(attrs={'inputmode': 'decimal', 'placeholder': '0.00'}))
+    discount = DollarsField(label='Discount', required=False, widget=forms.TextInput(attrs={'inputmode': 'decimal', 'placeholder': '0.00'}))
+    discount_label = forms.CharField(label='Shown on the invoice as', max_length=200, required=False, widget=forms.TextInput(attrs={'placeholder': 'e.g. Nonprofit discount'}))
     taxable = forms.BooleanField(required=False)
 
     def clean_quantity(self):
