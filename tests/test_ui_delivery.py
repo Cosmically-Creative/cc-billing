@@ -179,7 +179,7 @@ def test_send_form_disabled_and_escape(owner_client, issued):
     response = owner_client.get(reverse('billing:send', args=[doc.pk]))
     assert response.status_code == 200 and b'Email it' in response.content
     response = owner_client.post(reverse('billing:send', args=[doc.pk]), {'request_id':str(uuid.uuid4()), 'to':'sample@example.com','subject':'Sample','body':'Hello'})
-    assert b'disabled until the test install' in response.content
+    assert b'Email sending is turned off on this install' in response.content
     assert not DocumentEmail.objects.exists()
 
 
@@ -342,3 +342,25 @@ def test_owner_refund_resolution_requires_reviewed_tax_credit(owner_client,issue
     assert credit.customer_snapshot['tax_exempt'] is False
     assert svc.balance_cents(doc)==0 and not CustomerCredit.objects.exists()
     assert not getattr(mail,'outbox',[])
+
+
+def test_test_install_only_emails_allowed_recipients(owner_client, blake, issued, settings):
+    settings.CCB_EMAIL_ENABLED = True
+    settings.CCB_EMAIL_ALLOWED_RECIPIENTS = ['owner@example.com']
+    doc = issued()
+    page = owner_client.get(reverse('billing:send', args=[doc.pk])).content
+    assert b'email only goes to owner@example.com' in page
+    with pytest.raises(RuleError, match='only sends email to owner@example.com'):
+        delivery.send_document(blake, doc, uuid.uuid4(), 'client@example.com', 'Sample', 'Sample')
+    assert not DocumentEmail.objects.exists() and len(mail.outbox) == 0
+    doc.refresh_from_db(); assert doc.status == 'approved'
+    result = delivery.send_document(blake, doc, uuid.uuid4(), 'Owner@Example.com', 'Sample', 'Sample')
+    assert result.status == 'sent' and mail.outbox[0].to == ['Owner@Example.com']
+
+
+def test_receipts_respect_allowed_recipients(settings):
+    settings.CCB_EMAIL_ENABLED = True
+    settings.CCB_EMAIL_ALLOWED_RECIPIENTS = ['owner@example.com']
+    with pytest.raises(RuleError, match='only sends email'):
+        delivery.send_receipt_email(None, {'to': ['client@example.com']}, None)
+    assert len(mail.outbox) == 0

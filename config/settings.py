@@ -140,6 +140,8 @@ LOGGING = {
 
 # Delivery is opt-in at the test install. Local development never opens SMTP by default.
 CCB_EMAIL_ENABLED = env_bool('CCB_EMAIL_ENABLED', False)
+# Test installs: comma-separated addresses that may receive email. Empty means any address.
+CCB_EMAIL_ALLOWED_RECIPIENTS = [a.strip().lower() for a in env('CCB_EMAIL_ALLOWED_RECIPIENTS', '').split(',') if a.strip()]
 EMAIL_BACKEND = env('EMAIL_BACKEND', 'django.core.mail.backends.dummy.EmailBackend')
 EMAIL_HOST = env('EMAIL_HOST', '')
 EMAIL_PORT = int(env('EMAIL_PORT', '465'))

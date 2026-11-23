@@ -18,9 +18,16 @@ from .permissions import RuleError, require
 
 def _enabled():
     if not getattr(settings, 'CCB_EMAIL_ENABLED', False):
-        raise RuleError('Email delivery is disabled until the test install.')
+        raise RuleError('Email sending is turned off on this install. Use Download PDF or Mark as sent instead.')
     if settings.EMAIL_BACKEND in ('django.core.mail.backends.dummy.EmailBackend', 'django.core.mail.backends.console.EmailBackend', 'django.core.mail.backends.filebased.EmailBackend'):
         raise RuleError('Configure a delivery backend before enabling email.')
+
+
+def _allowed(addresses):
+    allowed = getattr(settings, 'CCB_EMAIL_ALLOWED_RECIPIENTS', [])
+    blocked = [a for a in addresses if allowed and a.strip().lower() not in allowed]
+    if blocked:
+        raise RuleError(f"This test install only sends email to {', '.join(allowed)}. Change the recipient to send a test.")
 
 
 def stored_pdf(relpath, expected_hash):
@@ -46,6 +53,7 @@ def send_document(actor, doc, request_id, recipient, subject, body):
     require(actor, 'send', 'document', doc.pk)
     _enabled()
     validate_email(recipient)
+    _allowed([recipient])
     if not subject.strip() or '\n' in subject or '\r' in subject:
         raise RuleError('Use a single-line email subject.')
     with transaction.atomic():
@@ -82,6 +90,7 @@ def send_receipt_email(receipt, summary, paid_copy):
     _enabled()
     for address in summary['to']:
         validate_email(address)
+    _allowed(summary['to'])
     inv = receipt.payment.invoice
     summary = {**summary, 'business': inv.business_snapshot, 'url': f'{pdf.base_url()}/pay/{inv.pay_code}'}
     message = EmailMessage(f"Cosmically Creative · Receipt for {summary['invoice_number']}", render_to_string('billing/email/receipt.txt', summary),
