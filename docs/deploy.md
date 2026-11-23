@@ -31,8 +31,17 @@ Not routed from the internet: `/api/*`, `/mcp`, `/admin/`. Ledger reaches the AP
 Add to the nightly `mainvps-backup` job: `pg_dump -Fc` before upload, `/opt/billing` (config + data),
 `--keep-yearly 7`, and restore the dump in the Sunday test (row counts + `verify_chain`).
 
-## Before going live
-Wipe test data and counters, switch to live Stripe keys, run the acceptance suite, one full restore test.
+## Live since 2026-11-23 (Blake's go-ahead)
+The install holds only real data (no sample rows were left), so it was promoted in place; CC-2026-0001 is the first real invoice.
+- Email: SMTP via postal.arkhost.com:465 as blake@cosmicallycreative.com; `CCB_EMAIL_ALLOWED_RECIPIENTS` removed.
+  Re-add it (comma-separated) to limit a non-production install to test addresses.
+- Stripe live: key and webhook signing secret live only in `/opt/billing/.env` (mode 600) and the Vault. The webhook
+  `https://billing.cosmicallycreative.com/stripe/webhook` sends the seven events in stripe-transport.md (API 2026-10-28.endive).
+- Receipts: `billing-receipts.timer` runs `manage.py deliver_receipts` every 5 minutes.
+- Backups: the nightly `mainvps-backup` job dumps the database to `/root/backups/billing` (7 kept) and sends it with
+  `/opt/billing` (PDFs) to the encrypted offsite copy. `/root/backups/billing-restore-test.sh` restores the latest offsite copy
+  into a scratch database and checks counts, the audit chain, PDF hashes and guard triggers; passed on 2026-11-23.
+- Still open: a restricted Stripe key instead of the full secret key, and a separate limited database role for the app.
 
 
 ## Readiness checks prepared in this build
