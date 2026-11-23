@@ -13,7 +13,7 @@ class Command(BaseCommand):
             lines=[dict(description='Sample service',qty='1',rate='$1.00',amount='$1.00',tax_mark='–',running_subtotal='$1.00')],
             totals=dict(subtotal='$1.00',total='$1.00',show_tax=False,show_balance=True,balance_due='$1.00'),
             pay=dict(show=False),notes='Sample data only.',footer_left='Sample business · PDF smoke check',
-            fonts_dir=(pdf.STATIC/'fonts').as_uri(),logo_uri=(pdf.STATIC/'cc-logo-v11.svg').as_uri())
+            fonts_dir=(pdf.STATIC/'fonts').as_uri(),logo_uri=(pdf.STATIC/'cc-logo-v10.png').as_uri())
         data=pdf.render_pdf_bytes(context)
         if not data.startswith(b'%PDF') or len(data)<1000:
             raise CommandError('PDF smoke failed.')

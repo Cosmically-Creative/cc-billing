@@ -92,3 +92,17 @@ def test_settings_marks_current_choice(owner_client):
 def test_pdf_template_unaffected():
     path = Path(__file__).resolve().parents[1] / 'billing/templates/billing/pdf/document.html'
     assert 'data-theme' not in path.read_text()
+
+
+def test_sidebar_logo_matches_background(owner_client):
+    """Logo v10 (navy letters) on the white sidebar, Logo v11 (white letters) on navy."""
+    html = owner_client.get(reverse('home')).content.decode()
+    assert 'class="logo-on-light" src="/static/billing/cc-logo-v10.png"' in html
+    assert 'class="logo-on-dark" src="/static/billing/cc-logo-v11.svg"' in html
+    assert '.app-sidebar .brand .logo-on-dark { display: none; }' in html
+
+
+def test_sign_in_page_uses_white_background_logo(client):
+    html = client.get(reverse('accounts:login')).content.decode()
+    assert 'billing/cc-logo-v10.png' in html
+    assert 'cc-logo-v11' not in html

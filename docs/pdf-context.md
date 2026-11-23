@@ -34,6 +34,6 @@ The template must not compute anything. Example below is SAMPLE data.
   "applied_to": null,                       // credit notes: {"invoice", "invoice_total", "credit", "remaining"}
   "page_note": "",
   "fonts_dir": "file:///.../static/billing/fonts",   // contains rubik-latin-400/500/600-normal.woff
-  "logo_uri": "file:///.../static/billing/cc-logo-v11.svg"
+  "logo_uri": "file:///.../static/billing/cc-logo-v10.png"
 }
 ```

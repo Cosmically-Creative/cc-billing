@@ -19,7 +19,7 @@ text.secondary #5A6478 · neutral-400 #8A93A8 · neutral-25 #F7F8FB · border #E
 ## Invoice layout (y positions in px from the top of page 1)
 | Block | Position / size | Content and style |
 |---|---|---|
-| Header | 0–128, white | Logo v11 at x40 y16, 160×101. Right-aligned at x476 w292: "INVOICE" 12/600 blue (y34); number 30/600 navy (y52); "email · phone" 11/400 secondary (y96, from x400 w368) |
+| Header | 0–128, white | Logo v10 (navy letters, for white backgrounds) at x40 y16, 160×101. Right-aligned at x476 w292: "INVOICE" 12/600 blue (y34); number 30/600 navy (y52); "email · phone" 11/400 secondary (y96, from x400 w368) |
 | Rules | blue 4 px at y128, yellow 4 px at y132 | full width |
 | From | x48 y168 | label "FROM" 10/600 secondary; then 12/400 navy, 5 lines: name, address line, city/state/zip, email, phone |
 | Bill to | x288 y168 | label "BILL TO"; customer name, contact, address lines (from the customer snapshot) |

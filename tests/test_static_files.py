@@ -6,6 +6,7 @@ from django.test import Client
 
 @pytest.mark.parametrize('path, content_type', [
     ('/static/billing/cc-logo-v11.svg', 'svg'),
+    ('/static/billing/cc-logo-v10.png', 'png'),
     ('/static/billing/fonts/rubik-latin-400-normal.woff', 'woff'),
     ('/static/billing/editor.js', 'javascript'),
 ])

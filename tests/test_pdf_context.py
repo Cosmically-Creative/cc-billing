@@ -125,3 +125,9 @@ def test_10_void_stamp(blake, make_invoice, products):
     ctx = pdf.document_context(inv, stamp="void")
     assert ctx["stamp"]["kind"] == "VOID"
     assert ctx["totals"]["balance_due"] == "$0.00"
+
+
+def test_pdf_uses_white_background_logo(blake, make_invoice, products):
+    inv = make_invoice([line(products["build"], 10000)])
+    ctx = pdf.document_context(inv)
+    assert ctx["logo_uri"].endswith("/cc-logo-v10.png")

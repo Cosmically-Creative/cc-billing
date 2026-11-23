@@ -198,6 +198,15 @@
       width: 120px;
     }
 
+    /* Logo v10 (navy letters) on the white sidebar; Logo v11 (white letters) on navy. */
+    .app-sidebar .brand .logo-on-dark { display: none; }
+    :root[data-theme="dark"] .app-sidebar .brand .logo-on-light { display: none; }
+    :root[data-theme="dark"] .app-sidebar .brand .logo-on-dark { display: block; }
+    @media (prefers-color-scheme: dark) {
+      :root[data-theme="system"] .app-sidebar .brand .logo-on-light { display: none; }
+      :root[data-theme="system"] .app-sidebar .brand .logo-on-dark { display: block; }
+    }
+
     /* Blue + yellow brand rules under the logo, echoing the document accent. */
     .app-sidebar .brand-rules {
       display:none;
@@ -469,7 +478,8 @@
   <div class="app">
     <aside class="app-sidebar">
       <div class="brand">
-        <img src="{% static 'billing/cc-logo-v11.svg' %}" alt="Cosmically Creative" width="160" height="101">
+        <img class="logo-on-light" src="{% static 'billing/cc-logo-v10.png' %}" alt="Cosmically Creative" width="160" height="101">
+        <img class="logo-on-dark" src="{% static 'billing/cc-logo-v11.svg' %}" alt="Cosmically Creative" width="160" height="101">
         <div class="brand-rules" aria-hidden="true"></div>
       </div>
       <nav class="app-nav" aria-label="Billing">

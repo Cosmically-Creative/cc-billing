@@ -205,7 +205,7 @@ def document_context(doc, *, stamp=None, paid_copy=None, payments=None, replacem
         "applied_to": applied_to,
         "page_note": page_note,
         "fonts_dir": (STATIC / "fonts").as_uri(),
-        "logo_uri": (STATIC / "cc-logo-v11.svg").as_uri(),
+        "logo_uri": (STATIC / "cc-logo-v10.png").as_uri(),  # dark-letter logo for white paper
     }
 
 
